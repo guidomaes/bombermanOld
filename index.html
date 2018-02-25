@@ -128,20 +128,32 @@
 
         function movePlayer(player) {
 
-            switch (player.VelX) {
-                case 1: {
-                    player.CanvasPos.X = player.CanvasPos.X + player.playerSpeed;
-                }
-                case -1: {
-                    player.CanvasPos.X = player.CanvasPos.X - player.playerSpeed;
-                }
+            posX = player.CanvasPos.X;
+            posY = player.CanvasPos.Y;
+
+            if (player.XKeys[0] === true && player.XKeys[1] === false) {
+                player.CanvasPos.X = player.CanvasPos.X + player.playerSpeed;
             }
-            switch (player.VelY) {
-                case 1: {
-                    player.CanvasPos.Y = player.CanvasPos.Y + player.playerSpeed;
-                }
-                case -1: {
-                    player.CanvasPos.Y = player.CanvasPos.Y - player.playerSpeed;
+            else if (player.XKeys[0] === false && player.XKeys[1] === true) {
+                player.CanvasPos.X = player.CanvasPos.X - player.playerSpeed;
+            }
+
+            if (player.YKeys[0] === true && player.YKeys[1] === false) {
+                player.CanvasPos.Y = player.CanvasPos.Y - player.playerSpeed;
+            }
+            else if (player.YKeys[0] === false && player.YKeys[1] === true) {
+                player.CanvasPos.Y = player.CanvasPos.Y + player.playerSpeed;
+            }
+
+            for (var i = 0; i < map.length; i++) {
+                if (map[i].BlockType.blockType != blockType.type_wall) {
+                    continue;
+                } else {
+                    if (checkCollision(player, map[i])) {
+                        console.log('success!');
+                        //player.CanvasPos.X = posX;
+                        //player.CanvasPos.Y = posY;
+                    }
                 }
             }
 
@@ -182,9 +194,9 @@
 
         timer.Tick = function () {
 
-            //for (var i = 0; i < Players.length; i++) {
-            //    movePlayer(Players[i]);
-            //}
+            for (var i = 0; i < Players.length; i++) {
+                movePlayer(Players[i]);
+            }
             //for (var i = 0; i < Players.length; i++) {
 
             //    if (Players[i].keyPressed === true) {
@@ -418,59 +430,40 @@
                         }
                     } break;
 
-/*W + S*/           case 87 && 83: {
-                        Players[0].VelY = 0;
-                        document.getElementById('demo2').innerHTML = Players[0].VelY;
-                    } break;
-
-/*D + A*/           case 68 && 65: {
-                        Players[0].VelX = 0;
-                        document.getElementById('demo').innerHTML = Players[0].VelX;
-                    } break;
-
-/*UP + DOWN*/       case 38 && 40: {
-                        Players[1].VelY = 0;
-                    } break;
-
-/*RIGHT + LEFT*/    case 39 && 37: {
-                        Players[1].VelX = 0;
-                    } break;
+/*Player 1*/
 
 /*W*/               case 87: {
-                        Players[0].VelY = -1;
-                        document.getElementById('demo2').innerHTML = Players[0].VelY;
+                        Players[0].YKeys[0] = true;
                     } break;
 
 /*D*/               case 68: {
-                        Players[0].VelX = 1;
-                        document.getElementById('demo').innerHTML = Players[0].VelX;
+                        Players[0].XKeys[0] = true;
                     } break;
 
 /*S*/               case 83: {
-                        Players[0].VelY = 1;
-                        document.getElementById('demo2').innerHTML = Players[0].VelY;
+                        Players[0].YKeys[1] = true;
                     } break;
 
 /*A*/               case 65: {
-                        Players[0].VelX = -1;
-                        document.getElementById('demo').innerHTML = Players[0].VelX;
+                        Players[0].XKeys[1] = true;
                     } break;
 
+/*Player 2*/
 
 /*UP*/              case 38: {
-                        Players[1].VelY = -1;
+                        Players[1].YKeys[0] = true;
                     } break;
 
 /*RIGHT*/           case 39: {
-                        Players[1].VelX = 1;
+                        Players[1].XKeys[0] = true;
                     } break;
 
 /*DOWN*/            case 40: {
-                        Players[1].VelY = 1;
+                        Players[1].YKeys[1] = true; 
                     } break;
 
 /*LEFT*/            case 37: {
-                        Players[1].VelX = -1;
+                        Players[1].XKeys[1] = true;
                     } break;
 
             }
@@ -481,73 +474,40 @@
 
             switch (e.keyCode) {
 
+/*Player 1*/
+
 /*W*/           case 87: {
-                    if (Players[0].VelY === 0) {
-                        Players[0].VelY = 1;
-                    } else {
-                        Players[0].VelY = 0;
-                    }
-                    document.getElementById('demo2').innerHTML = Players[0].VelY;
+                    Players[0].YKeys[0] = false;
                 } break;
-
+                
 /*D*/           case 68: {
-                    if (Players[0].VelX === 0) {
-                        Players[0].VelX = -1;
-                    } else {
-                        Players[0].VelX = 0;
-                    }
-                    document.getElementById('demo').innerHTML = Players[0].VelX;
+                    Players[0].XKeys[0] = false;
                 } break;
-
+                
 /*S*/           case 83: {
-                    if (Players[0].VelY === 0) {
-                        Players[0].VelY = -1;
-                    } else {
-                        Players[0].VelY = 0;
-                    }
-                    document.getElementById('demo2').innerHTML = Players[0].VelY
+                    Players[0].YKeys[1] = false;
                 } break;
-
+                
 /*A*/           case 65: {
-                    if (Players[0].VelX === 0) {
-                        Players[0].VelX = 1;
-                    } else {
-                        Players[0].VelY = 0;
-                    }
-                    document.getElementById('demo').innerHTML = Players[0].VelX;
+                    Players[0].XKeys[1] = false;
                 } break;
 
+/*Player 2*/
 
 /*UP*/          case 38: {
-                    if (Players[1].VelY === 0) {
-                        Players[1].VelY = 1;
-                    } else {
-                        Players[0].VelY = 0;
-                    }
+                    Players[1].YKeys[0] = false;
                 } break;
 
 /*RIGHT*/       case 39: {
-                    if (Players[1].VelX === 0) {
-                        Players[1].VelX = -1;
-                    } else {
-                        Players[0].VelY = 0;
-                    }
+                    Players[1].XKeys[0] = false;
                 } break;
 
 /*DOWN*/        case 40: {
-                    if (Players[1].VelY === 0) {
-                        Players[1].VelY = -1;
-                    } else {
-                        Players[0].VelY = 0;
-                    }
+                    Players[1].YKeys[1] = false;
                 } break;
 
 /*LEFT*/        case 37: {
-                    if (Players[1].VelX === 0) {
-                        Players[1].VelX = 1;
-                    } else {
-                        Players[0].VelY = 0;
-                    }
+                    Players[1].XKeys[1] = false;
                 } break;
 
             }
@@ -568,11 +528,11 @@
                 Width: blockSize,
                 Height: blockSize
             },
-            this.VelX = 0,
-            this.VelY = 0,
+            this.XKeys = [false, false],
+            this.YKeys = [false, false],
             this.Number = number,
             this.playerColor = color,
-            this.playerSpeed = 4,
+            this.playerSpeed = 1,
             this.currentDirection = Direction.RIGHT
 
         }
