@@ -1,0 +1,654 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <title>Bomberman</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+</head>
+<body>
+
+    <canvas id="cvs" width="680" height="520"></canvas>
+    <p id="demo"></p>
+    <p id="demo2"></p>
+
+    <script>
+
+        var c = document.getElementById('cvs');
+        var ctx = c.getContext('2d');
+        var timer = new Timer();
+        timer.Interval = 5;
+        var blockSize = 40;
+        var blockType = {
+            type_empty: 0,
+            type_wall: 1,
+            type_crate: 2
+        };
+        var mapWidth = document.getElementById('cvs').width / blockSize;
+        var mapHeight = document.getElementById('cvs').height / blockSize;
+        var map = [];
+        var Direction = {
+            UP: 0,
+            RIGHT: 1,
+            DOWN: 2,
+            LEFT: 3
+        }
+        var Players = [
+            new Player(40, 40, 1, 'blue'),
+            new Player(600, 440, 2, 'red')
+        ];
+
+        function makeMap() {
+
+            for (var i = 0, x = 0, y = 0; i < mapWidth * mapHeight; i++) {
+
+                if (x === mapWidth) {
+                    x = 0;
+                    y++;
+                }
+                if (x === 0 || y === 0 || x === mapWidth - 1 || y === mapHeight - 1 || x % 2 === 0 && y % 2 === 0) {
+                    map.push({
+                        MapPos: {
+                            X: x,
+                            Y: y
+                        },
+                        CanvasPos: {
+                            X: Math.floor(x * blockSize),
+                            Y: Math.floor(y * blockSize)
+                        },
+                        Size: {
+                            Width: blockSize,
+                            Height: blockSize
+                        },
+                        BlockType: {
+                            blockType: blockType.type_wall
+                        }
+                    });
+                }
+                else {
+                    map.push({
+                        MapPos: {
+                            X: x,
+                            Y: y
+                        },
+                        CanvasPos: {
+                            X: Math.floor(x * blockSize),
+                            Y: Math.floor(y * blockSize)
+                        },
+                        Size: {
+                            Width: blockSize,
+                            Height: blockSize
+                        },
+                        BlockType: {
+                            blockType: blockType.type_empty
+                        }
+                    });
+                }
+                x++;
+            }
+
+        }
+
+        function drawMap() {
+
+            for (var i = 0; i < map.length; i++) {
+                if (map[i].BlockType.blockType === blockType.type_wall) {
+                    ctx.fillStyle = "black";
+                }
+                else if (map[i].BlockType.blockType === blockType.type_empty) {
+                    ctx.fillStyle = "green";
+                }
+                ctx.fillRect(map[i].MapPos.X * blockSize, map[i].MapPos.Y * blockSize, blockSize, blockSize);
+            }
+
+        }
+
+        function drawPlayers() {
+
+            for (var i = 0; i < Players.length; i++) {
+                ctx.fillStyle = Players[i].playerColor;
+                ctx.fillRect(Players[i].CanvasPos.X, Players[i].CanvasPos.Y, Players[i].Size.Width, Players[i].Size.Height);
+                ctx.fillStyle = 'black';
+            }
+
+        }
+
+        function newGame() {
+
+            makeMap();
+            drawMap();
+            drawPlayers();
+            //for (var i = 0; i < Players.length; i++) {
+            //    updateSections(Players[i]);
+            //}
+
+        }
+
+        function movePlayer(player) {
+
+            switch (player.VelX) {
+                case 1: {
+                    player.CanvasPos.X = player.CanvasPos.X + player.playerSpeed;
+                }
+                case -1: {
+                    player.CanvasPos.X = player.CanvasPos.X - player.playerSpeed;
+                }
+            }
+            switch (player.VelY) {
+                case 1: {
+                    player.CanvasPos.Y = player.CanvasPos.Y + player.playerSpeed;
+                }
+                case -1: {
+                    player.CanvasPos.Y = player.CanvasPos.Y - player.playerSpeed;
+                }
+            }
+
+        }
+
+        function checkCollision(obj1, obj2) {
+            if (
+                obj1.MapPos.X + obj1.Width > obj2.X &&
+                obj2.MapPos.X + obj2.Width > obj1.X &&
+                obj1.MapPos.Y + obj1.Height > obj2.MapPos.Y &&
+                obj2.MapPos.Y + obj2.Height > obj1.Height
+            ) {
+                return true;
+            } else {
+                return false;
+            }
+
+        }
+
+        //function calculateSupposedPosition(player, x, y) {
+
+        //    this.CanvasPos = {
+        //        X: player.CanvasPos.X + x,
+        //        Y: player.CanvasPos.Y + y
+        //    };
+
+        //    this.Size = {
+        //        Width: blockSize,
+        //        Height: blockSize
+        //    };
+
+        //    this.Sections = {};
+
+        //}
+
+        newGame();
+
+
+        timer.Tick = function () {
+
+            //for (var i = 0; i < Players.length; i++) {
+            //    movePlayer(Players[i]);
+            //}
+            //for (var i = 0; i < Players.length; i++) {
+
+            //    if (Players[i].keyPressed === true) {
+
+            //        switch (Players[i].currentDirection) {
+
+            //            case Direction.UP:
+            //            {
+
+            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], 0, -Players[i].playerSpeed);
+
+            //                    //updateSections(supposedPosition);
+
+            //                    //for (var p = 0; p < map.length; p++) {
+
+            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
+            //                    //        if (checkCollision(supposedPosition.Sections.UpLeft, map[p]) && !checkCollision(supposedPosition.Sections.UpRight, map[p])) {
+            //                    //            Players[i].CanvasPos.X += Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else if (!checkCollision(supposedPosition.Sections.UpLeft, map[p]) && checkCollision(supposedPosition.Sections.UpRight, map[p])) {
+            //                    //            Players[i].CanvasPos.X -= Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else {
+            //                    //            break;
+            //                    //        }
+
+            //                    //    }
+            //                    //    if (p === map.length - 1) {
+            //                    //        Players[i].CanvasPos.Y -= Players[i].playerSpeed;
+            //                    //        Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
+            //                    //        updateSections(Players[i]);
+            //                    //    }
+
+            //                    //}
+
+            //                    Players[i].CanvasPos.Y -= Players[i].playerSpeed;
+            //                    Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
+
+            //            } break;
+            //            case Direction.RIGHT:
+            //            {
+
+            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], Players[i].playerSpeed, 0);
+
+            //                    //updateSections(supposedPosition);
+
+            //                    //for (var p = 0; p < map.length; p++) {
+
+            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
+            //                    //        if (checkCollision(supposedPosition.Sections.UpRight, map[p]) && !checkCollision(supposedPosition.Sections.DownRight, map[p])) {
+            //                    //            Players[i].CanvasPos.Y += Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else if (!checkCollision(supposedPosition.Sections.UpRight, map[p]) && checkCollision(supposedPosition.Sections.DownRight, map[p])) {
+            //                    //            Players[i].CanvasPos.Y -= Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else {
+            //                    //            break;
+            //                    //        }
+            //                    //    }
+            //                    //    if (p === map.length - 1) {
+            //                    //        Players[i].CanvasPos.X += Players[i].playerSpeed;
+            //                    //        Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //        updateSections(Players[i]);
+            //                    //    }
+
+            //                    //}
+
+            //                    Players[i].CanvasPos.X += Players[i].playerSpeed;
+            //                    Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+
+            //            } break;
+            //            case Direction.DOWN:
+            //            {
+
+            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], 0, Players[i].playerSpeed);
+
+            //                    //updateSections(supposedPosition);
+
+            //                    //for (var p = 0; p < map.length; p++) {
+
+            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
+            //                    //        if (checkCollision(supposedPosition.Sections.DownRight, map[p]) && !checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
+            //                    //            Players[i].CanvasPos.X -= Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else if (!checkCollision(supposedPosition.Sections.DownRight, map[p]) && checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
+            //                    //            Players[i].CanvasPos.X += Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else {
+            //                    //            break;
+            //                    //        }
+            //                    //    }
+            //                    //    if (p === map.length - 1) {
+            //                    //        Players[i].CanvasPos.Y += Players[i].playerSpeed;
+            //                    //        Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
+            //                    //        updateSections(Players[i]);
+            //                    //    }
+
+            //                    //}
+
+            //                    Players[i].CanvasPos.Y += Players[i].playerSpeed;
+            //                    Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
+
+            //            } break;
+            //            case Direction.LEFT:
+            //            {
+
+            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], -Players[i].playerSpeed, 0);
+
+            //                    //updateSections(supposedPosition);
+
+            //                    //for (var p = 0; p < map.length; p++) {
+
+            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
+            //                    //        if (checkCollision(supposedPosition.Sections.UpLeft, map[p]) && !checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
+            //                    //            Players[i].CanvasPos.Y += Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else if (!checkCollision(supposedPosition.Sections.UpLeft, map[p]) && checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
+            //                    //            Players[i].CanvasPos.Y -= Players[i].playerSpeed;
+            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //            updateSections(Players[i]);
+            //                    //        }
+            //                    //        else {
+            //                    //            break;
+            //                    //        }
+            //                    //    }
+            //                    //    if (p === map.length - 1) {
+            //                    //        Players[i].CanvasPos.X -= Players[i].playerSpeed;
+            //                    //        Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+            //                    //        updateSections(Players[i]);
+            //                    //    }
+
+            //                    //}
+
+            //                    Players[i].CanvasPos.X -= Players[i].playerSpeed;
+            //                    Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
+
+            //            } break;
+
+            //        }
+
+            //    }
+
+            //}
+
+            ctx.clearRect(0, 0, c.width, c.height);
+            drawMap();
+            drawPlayers();
+
+
+
+        };
+
+
+
+        //$(document).keydown(function (e) {
+
+        //    switch (e.keyCode) {
+
+
+        //        ///*W*/           case 87: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[0].currentDirection = Direction.UP;
+        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
+        //        //                    }
+        //        //                } break;
+        //        ///*D*/           case 68: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[0].currentDirection = Direction.RIGHT;
+        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
+        //        //                    }
+        //        //                } break;
+        //        ///*S*/           case 83: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[0].currentDirection = Direction.DOWN;
+        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
+        //        //                    }
+        //        //                } break;
+        //        ///*A*/           case 65: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[0].currentDirection = Direction.LEFT;
+        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
+        //        //                    }
+        //        //                } break;
+        //        ///*UP*/          case 38: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[1].currentDirection = Direction.UP;
+        //        //                    }
+        //        //                } break;
+        //        ///*RIGHT*/       case 39: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[1].currentDirection = Direction.RIGHT;
+        //        //                    }
+        //        //                } break;
+        //        ///*DOWN*/        case 40: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[1].currentDirection = Direction.DOWN;
+        //        //                    }
+        //        //                } break;
+        //        ///*LEFT*/        case 37: {
+        //        //                    if (!timer.stopped) {
+        //        //                        Players[1].currentDirection = Direction.LEFT;
+        //        //                    }
+        //        //                } break;
+        //    }
+
+        //});
+
+        $(document).keydown(function (e) {
+
+            switch (e.keyCode) {
+
+/*ENTER*/           case 13: {
+                        if (timer.stopped) {
+                            timer.Start();
+                        } else {
+                            timer.Stop();
+                        }
+                    } break;
+
+/*W + S*/           case 87 && 83: {
+                        Players[0].VelY = 0;
+                        document.getElementById('demo2').innerHTML = Players[0].VelY;
+                    } break;
+
+/*D + A*/           case 68 && 65: {
+                        Players[0].VelX = 0;
+                        document.getElementById('demo').innerHTML = Players[0].VelX;
+                    } break;
+
+/*UP + DOWN*/       case 38 && 40: {
+                        Players[1].VelY = 0;
+                    } break;
+
+/*RIGHT + LEFT*/    case 39 && 37: {
+                        Players[1].VelX = 0;
+                    } break;
+
+/*W*/               case 87: {
+                        Players[0].VelY = -1;
+                        document.getElementById('demo2').innerHTML = Players[0].VelY;
+                    } break;
+
+/*D*/               case 68: {
+                        Players[0].VelX = 1;
+                        document.getElementById('demo').innerHTML = Players[0].VelX;
+                    } break;
+
+/*S*/               case 83: {
+                        Players[0].VelY = 1;
+                        document.getElementById('demo2').innerHTML = Players[0].VelY;
+                    } break;
+
+/*A*/               case 65: {
+                        Players[0].VelX = -1;
+                        document.getElementById('demo').innerHTML = Players[0].VelX;
+                    } break;
+
+
+/*UP*/              case 38: {
+                        Players[1].VelY = -1;
+                    } break;
+
+/*RIGHT*/           case 39: {
+                        Players[1].VelX = 1;
+                    } break;
+
+/*DOWN*/            case 40: {
+                        Players[1].VelY = 1;
+                    } break;
+
+/*LEFT*/            case 37: {
+                        Players[1].VelX = -1;
+                    } break;
+
+            }
+
+        });
+
+        $(document).keyup(function (e) {
+
+            switch (e.keyCode) {
+
+/*W*/           case 87: {
+                    if (Players[0].VelY === 0) {
+                        Players[0].VelY = 1;
+                    } else {
+                        Players[0].VelY = 0;
+                    }
+                    document.getElementById('demo2').innerHTML = Players[0].VelY;
+                } break;
+
+/*D*/           case 68: {
+                    if (Players[0].VelX === 0) {
+                        Players[0].VelX = -1;
+                    } else {
+                        Players[0].VelX = 0;
+                    }
+                    document.getElementById('demo').innerHTML = Players[0].VelX;
+                } break;
+
+/*S*/           case 83: {
+                    if (Players[0].VelY === 0) {
+                        Players[0].VelY = -1;
+                    } else {
+                        Players[0].VelY = 0;
+                    }
+                    document.getElementById('demo2').innerHTML = Players[0].VelY
+                } break;
+
+/*A*/           case 65: {
+                    if (Players[0].VelX === 0) {
+                        Players[0].VelX = 1;
+                    } else {
+                        Players[0].VelY = 0;
+                    }
+                    document.getElementById('demo').innerHTML = Players[0].VelX;
+                } break;
+
+
+/*UP*/          case 38: {
+                    if (Players[1].VelY === 0) {
+                        Players[1].VelY = 1;
+                    } else {
+                        Players[0].VelY = 0;
+                    }
+                } break;
+
+/*RIGHT*/       case 39: {
+                    if (Players[1].VelX === 0) {
+                        Players[1].VelX = -1;
+                    } else {
+                        Players[0].VelY = 0;
+                    }
+                } break;
+
+/*DOWN*/        case 40: {
+                    if (Players[1].VelY === 0) {
+                        Players[1].VelY = -1;
+                    } else {
+                        Players[0].VelY = 0;
+                    }
+                } break;
+
+/*LEFT*/        case 37: {
+                    if (Players[1].VelX === 0) {
+                        Players[1].VelX = 1;
+                    } else {
+                        Players[0].VelY = 0;
+                    }
+                } break;
+
+            }
+
+        });
+
+        function Player(x, y, number, color) {
+
+            this.MapPos = {
+                X: Math.floor(x / blockSize),
+                Y: Math.floor(y / blockSize)
+            },
+            this.CanvasPos = {
+                X: x,
+                Y: y
+            },
+            this.Size = {
+                Width: blockSize,
+                Height: blockSize
+            },
+            this.VelX = 0,
+            this.VelY = 0,
+            this.Number = number,
+            this.playerColor = color,
+            this.playerSpeed = 4,
+            this.currentDirection = Direction.RIGHT
+
+        }
+
+        //function updateSections(player) {
+        //    player.Sections = {
+        //        UpLeft: {
+        //            CanvasPos: {
+        //                X: player.CanvasPos.X,
+        //                Y: player.CanvasPos.Y
+        //            },
+        //            Size: {
+        //                Width: blockSize / 2,
+        //                Height: blockSize / 2
+        //            }
+        //        },
+        //        UpRight: {
+        //            CanvasPos: {
+        //                X: player.CanvasPos.X + blockSize / 2,
+        //                Y: player.CanvasPos.Y
+        //            },
+        //            Size: {
+        //                Width: blockSize / 2,
+        //                Height: blockSize / 2
+        //            }
+        //        },
+        //        DownLeft: {
+        //            CanvasPos: {
+        //                X: player.CanvasPos.X,
+        //                Y: player.CanvasPos.Y + blockSize / 2
+        //            },
+        //            Size: {
+        //                Width: blockSize / 2,
+        //                Height: blockSize / 2
+        //            }
+        //        },
+        //        DownRight: {
+        //            CanvasPos: {
+        //                X: player.CanvasPos.X + blockSize / 2,
+        //                Y: player.CanvasPos.Y + blockSize / 2
+        //            },
+        //            Size: {
+        //                Width: blockSize / 2,
+        //                Height: blockSize / 2
+        //            }
+        //        }
+        //    };
+        //}
+
+
+
+        function Timer() {
+
+            this.Interval = 0;
+            this.stopped = true;
+            this.Tick = function () { };
+            this.ticki = function () {
+                if (!self.stopped) {
+                    self.Tick();
+                    self.continue();
+                }
+            };
+            this.Start = function () {
+                self.stopped = false;
+                self.continue();
+            };
+            this.continue = function () {
+                setTimeout(this.ticki, this.Interval);
+            };
+            this.Stop = function () {
+                self.stopped = true;
+            };
+            var self = this;
+
+        }
+
+    </script>
+</body>
+</html>
