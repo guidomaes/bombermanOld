@@ -8,18 +8,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 </head>
-<body>
+<body style="background-color: black;">
 
     <canvas id="cvs" width="680" height="520"></canvas>
-    <p id="demo"></p>
-    <p id="demo2"></p>
 
     <script>
 
         var c = document.getElementById('cvs');
         var ctx = c.getContext('2d');
         var timer = new Timer();
-        timer.Interval = 5;
+        timer.Interval = 10;
         var blockSize = 40;
         var blockType = {
             type_empty: 0,
@@ -34,10 +32,30 @@
             RIGHT: 1,
             DOWN: 2,
             LEFT: 3
-        }
+        };
+        var spawnPoints = [
+            {
+                X: 40,
+                Y: 40
+            },
+            {
+                X: 600,
+                Y: 40
+            },
+            {
+                X: 40,
+                Y: 440
+            },
+            {
+                X: 600,
+                Y: 440
+            }
+        ];
+        var reservedBlocks = [];
+        var reservedBlocksPercentage = 0.7;
         var Players = [
-            new Player(40, 40, 1, 'blue'),
-            new Player(600, 440, 2, 'red')
+            new Player(spawnPoints[0].X, spawnPoints[0].Y, 1, 'blue'),
+            new Player(spawnPoints[1].X, spawnPoints[1].Y, 2, 'red')
         ];
 
         function makeMap() {
@@ -91,6 +109,152 @@
 
         }
 
+        function addReservedBlocks() {
+
+            //Loop through spawnpoints
+            for (var i = 0; i < spawnPoints.length; i++) {
+
+                //Add spawnpoints to reservedBlocks[]
+                reservedBlocks.push({
+                    X: spawnPoints[i].X,
+                    Y: spawnPoints[i].Y
+                });
+
+                for (var j = 0; j < map.length; j++) {
+
+                    //Check if map values match spawnpoints values
+                    if (map[j].CanvasPos.X === spawnPoints[i].X && map[j].CanvasPos.Y === spawnPoints[i].Y) {
+
+                        for (var h = 0; h < map.length; h++) {
+                            
+                            //Check for the block above the spawnpoint
+                            if (map[j].CanvasPos.X === map[h].CanvasPos.X && map[j].CanvasPos.Y - 40 === map[h].CanvasPos.Y) {
+
+                                //If the block above the spawnpoint is an empty block, add that block and the one above that to reservedBlocks[]
+                                if (map[h].BlockType.blockType === blockType.type_empty) {
+
+                                    reservedBlocks.push(
+                                        {
+                                            X: map[h].CanvasPos.X,
+                                            Y: map[h].CanvasPos.Y
+                                        },
+                                        {
+                                            X: map[h].CanvasPos.X,
+                                            Y: map[h].CanvasPos.Y - 40
+                                        }
+                                    );
+
+                                }
+
+                            }
+
+                            //Check for the block above the spawnpoint
+                            if (map[j].CanvasPos.X + 40 === map[h].CanvasPos.X && map[j].CanvasPos.Y === map[h].CanvasPos.Y) {
+
+                                //If the block right from the spawnpoint is an empty block, add that block and the one right to that reservedBlocks[]
+                                if (map[h].BlockType.blockType === blockType.type_empty) {
+
+                                    reservedBlocks.push(
+                                        {
+                                            X: map[h].CanvasPos.X,
+                                            Y: map[h].CanvasPos.Y
+                                        },
+                                        {
+                                            X: map[h].CanvasPos.X + 40,
+                                            Y: map[h].CanvasPos.Y
+                                        }
+                                    );
+
+                                }
+
+                            }
+
+                            //Check for the block above the spawnpoint
+                            if (map[j].CanvasPos.X === map[h].CanvasPos.X && map[j].CanvasPos.Y + 40 === map[h].CanvasPos.Y) {
+
+                                //If the block below the spawnpoint is an empty block, add that block and the one below that to reservedBlocks[]
+                                if (map[h].BlockType.blockType === blockType.type_empty) {
+
+                                    reservedBlocks.push(
+                                        {
+                                            X: map[h].CanvasPos.X,
+                                            Y: map[h].CanvasPos.Y
+                                        },
+                                        {
+                                            X: map[h].CanvasPos.X,
+                                            Y: map[h].CanvasPos.Y + 40
+                                        }
+                                    );
+
+                                }
+
+                            }
+
+                            //Check for the block above the spawnpoint
+                            if (map[j].CanvasPos.X - 40 === map[h].CanvasPos.X && map[j].CanvasPos.Y === map[h].CanvasPos.Y) {
+
+                                //If the block left from the spawnpoint is an empty block, add that block and the one left to that to reservedBlocks[]
+                                if (map[h].BlockType.blockType === blockType.type_empty) {
+
+                                    reservedBlocks.push(
+                                        {
+                                            X: map[h].CanvasPos.X,
+                                            Y: map[h].CanvasPos.Y
+                                        },
+                                        {
+                                            X: map[h].CanvasPos.X - 40,
+                                            Y: map[h].CanvasPos.Y
+                                        }
+                                    );
+
+                                }
+
+                            }
+
+                        }
+
+                    }
+
+                }
+                
+            }
+
+        }
+
+        function generateCrates() {
+
+            for (var i = 0; i < map.length; i++) {
+
+                if (map[i].BlockType.blockType === blockType.type_empty) {
+
+                    var isReserved = false;
+                    for (var j = 0; j < reservedBlocks.length; j++) {
+
+                        if (map[i].CanvasPos.X === reservedBlocks[j].X && map[i].CanvasPos.Y === reservedBlocks[j].Y) {
+
+                            isReserved = true;
+                            break;
+
+                        }
+
+                    }
+
+                    if (!isReserved) {
+
+                        if (Math.random() < reservedBlocksPercentage) {
+
+                            map[i].BlockType.blockType = blockType.type_crate;
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+
         function drawMap() {
 
             for (var i = 0; i < map.length; i++) {
@@ -99,6 +263,9 @@
                 }
                 else if (map[i].BlockType.blockType === blockType.type_empty) {
                     ctx.fillStyle = "green";
+                }
+                else if (map[i].BlockType.blockType === blockType.type_crate) {
+                    ctx.fillStyle = "brown";
                 }
                 ctx.fillRect(map[i].MapPos.X * blockSize, map[i].MapPos.Y * blockSize, blockSize, blockSize);
             }
@@ -115,59 +282,69 @@
 
         }
 
+        function drawspawnPoints() {
+            ctx.fillStyle = 'yellow';
+            for (var i = 0; i < reservedBlocks.length; i++) {
+                ctx.fillRect(reservedBlocks[i].X, reservedBlocks[i].Y, blockSize, blockSize);
+            }
+            ctx.fillStyle = 'black';
+        }
+
         function newGame() {
-
             makeMap();
+            addReservedBlocks();
+            generateCrates();
             drawMap();
+            //drawspawnPoints();
             drawPlayers();
-            //for (var i = 0; i < Players.length; i++) {
-            //    updateSections(Players[i]);
-            //}
-
+            
         }
 
         function movePlayer(player) {
 
             posX = player.CanvasPos.X;
             posY = player.CanvasPos.Y;
-
-            if (player.XKeys[0] === true && player.XKeys[1] === false) {
+            
+            if (player.XKeys.right === true && player.XKeys.left === false) {
                 player.CanvasPos.X = player.CanvasPos.X + player.playerSpeed;
             }
-            else if (player.XKeys[0] === false && player.XKeys[1] === true) {
+            else if (player.XKeys.right === false && player.XKeys.left === true) {
                 player.CanvasPos.X = player.CanvasPos.X - player.playerSpeed;
             }
 
-            if (player.YKeys[0] === true && player.YKeys[1] === false) {
+            if (player.YKeys.up === true && player.YKeys.down === false) {
                 player.CanvasPos.Y = player.CanvasPos.Y - player.playerSpeed;
             }
-            else if (player.YKeys[0] === false && player.YKeys[1] === true) {
+            else if (player.YKeys.up === false && player.YKeys.down === true) {
                 player.CanvasPos.Y = player.CanvasPos.Y + player.playerSpeed;
             }
 
+            
+
             for (var i = 0; i < map.length; i++) {
-                if (map[i].BlockType.blockType != blockType.type_wall) {
-                    continue;
-                } else {
+                if (map[i].BlockType.blockType === blockType.type_wall) {
                     if (checkCollision(player, map[i])) {
-                        console.log('success!');
-                        //player.CanvasPos.X = posX;
-                        //player.CanvasPos.Y = posY;
+                        player.CanvasPos.X = posX;
+                        player.CanvasPos.Y = posY;
                     }
+                } else {
+                    continue;
                 }
             }
 
         }
 
         function checkCollision(obj1, obj2) {
-            if (
-                obj1.MapPos.X + obj1.Width > obj2.X &&
-                obj2.MapPos.X + obj2.Width > obj1.X &&
-                obj1.MapPos.Y + obj1.Height > obj2.MapPos.Y &&
-                obj2.MapPos.Y + obj2.Height > obj1.Height
-            ) {
+
+            if (obj1.CanvasPos.X < obj2.CanvasPos.X + obj2.Size.Width &&
+                obj1.CanvasPos.X + obj1.Size.Width > obj2.CanvasPos.X &&
+                obj1.CanvasPos.Y < obj2.CanvasPos.Y + obj2.Size.Height &&
+                obj1.Size.Height + obj1.CanvasPos.Y > obj2.CanvasPos.Y) {
+
                 return true;
-            } else {
+
+            }
+            else {
                 return false;
             }
 
@@ -358,6 +535,8 @@
             ctx.clearRect(0, 0, c.width, c.height);
             drawMap();
             drawPlayers();
+            //drawspawnPoints();
+            
 
 
 
@@ -433,37 +612,45 @@
 /*Player 1*/
 
 /*W*/               case 87: {
-                        Players[0].YKeys[0] = true;
+                        Players[0].YKeys.up = true;
+                        Players[0].currentDirection = Direction.UP;
                     } break;
 
 /*D*/               case 68: {
-                        Players[0].XKeys[0] = true;
+                        Players[0].XKeys.right = true;
+                        Players[0].currentDirection = Direction.RIGHT;
                     } break;
 
 /*S*/               case 83: {
-                        Players[0].YKeys[1] = true;
+                        Players[0].YKeys.down = true;
+                        Players[0].currentDirection = Direction.DOWN;
                     } break;
 
 /*A*/               case 65: {
-                        Players[0].XKeys[1] = true;
+                        Players[0].XKeys.left = true;
+                        Players[0].currentDirection = Direction.LEFT;
                     } break;
 
 /*Player 2*/
 
 /*UP*/              case 38: {
-                        Players[1].YKeys[0] = true;
+                        Players[1].YKeys.up = true;
+                        Players[1].currentDirection = Direction.UP;
                     } break;
 
 /*RIGHT*/           case 39: {
-                        Players[1].XKeys[0] = true;
+                        Players[1].XKeys.right = true;
+                        Players[1].currentDirection = Direction.RIGHT;
                     } break;
 
 /*DOWN*/            case 40: {
-                        Players[1].YKeys[1] = true; 
+                        Players[1].YKeys.down = true; 
+                        Players[1].currentDirection = Direction.DOWN;
                     } break;
 
 /*LEFT*/            case 37: {
-                        Players[1].XKeys[1] = true;
+                        Players[1].XKeys.left = true;
+                        Players[1].currentDirection = Direction.LEFT;
                     } break;
 
             }
@@ -477,37 +664,37 @@
 /*Player 1*/
 
 /*W*/           case 87: {
-                    Players[0].YKeys[0] = false;
+                    Players[0].YKeys.up = false;
                 } break;
                 
 /*D*/           case 68: {
-                    Players[0].XKeys[0] = false;
+                    Players[0].XKeys.right = false;
                 } break;
                 
 /*S*/           case 83: {
-                    Players[0].YKeys[1] = false;
+                    Players[0].YKeys.down = false;
                 } break;
                 
 /*A*/           case 65: {
-                    Players[0].XKeys[1] = false;
+                    Players[0].XKeys.left = false;
                 } break;
 
 /*Player 2*/
 
 /*UP*/          case 38: {
-                    Players[1].YKeys[0] = false;
+                    Players[1].YKeys.up = false;
                 } break;
 
 /*RIGHT*/       case 39: {
-                    Players[1].XKeys[0] = false;
+                    Players[1].XKeys.right = false;
                 } break;
 
 /*DOWN*/        case 40: {
-                    Players[1].YKeys[1] = false;
+                    Players[1].YKeys.down = false;
                 } break;
 
 /*LEFT*/        case 37: {
-                    Players[1].XKeys[1] = false;
+                    Players[1].XKeys.left = false;
                 } break;
 
             }
@@ -525,11 +712,17 @@
                 Y: y
             },
             this.Size = {
-                Width: blockSize,
-                Height: blockSize
+                Width: 30,
+                Height: 30
             },
-            this.XKeys = [false, false],
-            this.YKeys = [false, false],
+            this.XKeys = {
+                right: false,
+                left: false
+            },
+            this.YKeys = {
+                up: false,
+                down: false
+            },
             this.Number = number,
             this.playerColor = color,
             this.playerSpeed = 1,
