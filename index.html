@@ -20,8 +20,9 @@
         timer.Interval = 10;
         var blockSize = 40;
         var playerSize = 20;
-        var initialBombRadius = 2;
-        var initialAmountOfBombs = 1;
+        var explosionTime = 3000;
+        var initialBombRange = 2;
+        var initialAmountOfBombs = 3;
         var blockType = {
             type_empty: 0,
             type_wall: 1,
@@ -58,7 +59,7 @@
             }
         ];
         var reservedBlocks = [];
-        var amountOfReservedBlocksPerDirection = 2;
+        var reservedBlocksInEachDirectionFromSpawnPoints = 2;
         var cratesPercentage = 0.7;
         var Players = [
             new Player(spawnPoints[0].X, spawnPoints[0].Y, 1, 'blue'),
@@ -108,7 +109,8 @@
                         },
                         BlockType: {
                             blockType: blockType.type_empty
-                        }
+                        },
+                        OnFire: false
                     });
                 }
                 x++;
@@ -127,117 +129,24 @@
                     Y: spawnPoints[i].Y
                 });
 
-                for (var j = 0; j < map.length; j++) {
+                var surroundings = returnSurroundings(spawnPoints[i].X, spawnPoints[i].Y, reservedBlocksInEachDirectionFromSpawnPoints);
 
-                    //Check if map values match spawnpoints values
-                    if (map[j].CanvasPos.X === spawnPoints[i].X && map[j].CanvasPos.Y === spawnPoints[i].Y) {
+                for (var j = 0; j < surroundings.Directions.length; j++) {
 
-                        for (var h = 0; h < map.length; h++) {
+                    for (var k = 0; k < reservedBlocksInEachDirectionFromSpawnPoints; k++) {
 
-                            //Check for the block above the spawnpoint
-                            if (map[j].CanvasPos.X === map[h].CanvasPos.X && map[j].CanvasPos.Y - 40 === map[h].CanvasPos.Y) {
+                        if (surroundings.Directions[j][k] != null) {
 
-                                //If the block above the spawnpoint is an empty block, add that block and the one above that to reservedBlocks[]
-                                if (map[h].BlockType.blockType === blockType.type_empty) {
-
-                                    reservedBlocks.push(
-                                        {
-                                            X: map[h].CanvasPos.X,
-                                            Y: map[h].CanvasPos.Y
-                                        },
-                                        {
-                                            X: map[h].CanvasPos.X,
-                                            Y: map[h].CanvasPos.Y - 40
-                                        }
-                                    );
-
-                                }
-
-                            }
-
-                            //Check for the block above the spawnpoint
-                            if (map[j].CanvasPos.X + 40 === map[h].CanvasPos.X && map[j].CanvasPos.Y === map[h].CanvasPos.Y) {
-
-                                //If the block right from the spawnpoint is an empty block, add that block and the one right to that reservedBlocks[]
-                                if (map[h].BlockType.blockType === blockType.type_empty) {
-
-                                    reservedBlocks.push(
-                                        {
-                                            X: map[h].CanvasPos.X,
-                                            Y: map[h].CanvasPos.Y
-                                        },
-                                        {
-                                            X: map[h].CanvasPos.X + 40,
-                                            Y: map[h].CanvasPos.Y
-                                        }
-                                    );
-
-                                }
-
-                            }
-
-                            //Check for the block above the spawnpoint
-                            if (map[j].CanvasPos.X === map[h].CanvasPos.X && map[j].CanvasPos.Y + 40 === map[h].CanvasPos.Y) {
-
-                                //If the block below the spawnpoint is an empty block, add that block and the one below that to reservedBlocks[]
-                                if (map[h].BlockType.blockType === blockType.type_empty) {
-
-                                    reservedBlocks.push(
-                                        {
-                                            X: map[h].CanvasPos.X,
-                                            Y: map[h].CanvasPos.Y
-                                        },
-                                        {
-                                            X: map[h].CanvasPos.X,
-                                            Y: map[h].CanvasPos.Y + 40
-                                        }
-                                    );
-
-                                }
-
-                            }
-
-                            //Check for the block above the spawnpoint
-                            if (map[j].CanvasPos.X - 40 === map[h].CanvasPos.X && map[j].CanvasPos.Y === map[h].CanvasPos.Y) {
-
-                                //If the block left from the spawnpoint is an empty block, add that block and the one left to that to reservedBlocks[]
-                                if (map[h].BlockType.blockType === blockType.type_empty) {
-
-                                    reservedBlocks.push(
-                                        {
-                                            X: map[h].CanvasPos.X,
-                                            Y: map[h].CanvasPos.Y
-                                        },
-                                        {
-                                            X: map[h].CanvasPos.X - 40,
-                                            Y: map[h].CanvasPos.Y
-                                        }
-                                    );
-
-                                }
-
-                            }
+                            reservedBlocks.push({
+                                X: surroundings.Directions[j][k].MapPos.X,
+                                Y: surroundings.Directions[j][k].MapPos.Y
+                            });
 
                         }
-
+                        
                     }
 
                 }
-
-            }
-
-        }
-
-        function addReservedBlocks2() {
-
-            //Loop through spawnpoints
-            for (var i = 0; i < spawnPoints.length; i++) {
-
-                //Add spawnpoints to reservedBlocks[]
-                reservedBlocks.push({
-                    X: spawnPoints[i].X,
-                    Y: spawnPoints[i].Y
-                });
 
             }
 
@@ -263,10 +172,7 @@
             var Surroundings = {
 
                 Range: range,
-                Center: {
-                    X: posX,
-                    Y: posY
-                },
+                Center: findBlock(posX, posY),
                 Directions: [
                     [],
                     [],
@@ -286,26 +192,23 @@
                 }
                 switch(d) {
                     case 0: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X, Surroundings.Center.Y - r));
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X, Surroundings.Center.MapPos.Y - r));
                     } break;
                     case 1: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X + r, Surroundings.Center.Y));
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X + r, Surroundings.Center.MapPos.Y));
                     } break;
                     case 2: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X, Surroundings.Center.Y + r));
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X, Surroundings.Center.MapPos.Y + r));
                     } break;
                     case 3: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X - r, Surroundings.Center.Y));
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X - r, Surroundings.Center.MapPos.Y));
                     } break;
                 }
                 r++;
 
             };
 
-            console.log(Surroundings);
-
-
-
+            return Surroundings;
 
         }
 
@@ -318,7 +221,7 @@
                     var isReserved = false;
                     for (var j = 0; j < reservedBlocks.length; j++) {
 
-                        if (map[i].CanvasPos.X === reservedBlocks[j].X && map[i].CanvasPos.Y === reservedBlocks[j].Y) {
+                        if (map[i].MapPos.X === reservedBlocks[j].X && map[i].MapPos.Y === reservedBlocks[j].Y) {
 
                             isReserved = true;
                             break;
@@ -370,10 +273,12 @@
 
         }
 
-        function drawspawnPoints() {
-            ctx.fillStyle = 'yellow';
-            for (var i = 0; i < reservedBlocks.length; i++) {
-                ctx.fillRect(reservedBlocks[i].X, reservedBlocks[i].Y, blockSize, blockSize);
+        function drawBombs() {
+            ctx.fillStyle = 'orange';
+            for (var i = 0; i < Players.length; i++) {
+                for (var j = 0; j < Players[i].Bombs.length; j++){
+                    ctx.fillRect(Players[i].Bombs[j].CanvasPos.X, Players[i].Bombs[j].CanvasPos.Y, blockSize, blockSize);
+                }
             }
             ctx.fillStyle = 'black';
         }
@@ -383,7 +288,6 @@
             addReservedBlocks();
             generateCrates();
             drawMap();
-            //drawspawnPoints();
             drawPlayers();
 
         }
@@ -416,6 +320,8 @@
                         player.CanvasPos.Y = posY;
                     }
                 } else {
+                    player.MapPos.X = Math.floor(player.CanvasPos.X / blockSize);
+                    player.MapPos.Y = Math.floor(player.CanvasPos.Y / blockSize);
                     continue;
                 }
             }
@@ -436,6 +342,27 @@
                 return false;
             }
 
+        }
+
+        function isValidPlaceToLayBomb(x, y) {
+
+            var isValid = true;
+
+            for (var i = 0; i < Players.length; i++) {
+
+                for (var j = 0; j < Players[i].Bombs.length; j++) {
+
+                    if (x === Players[i].Bombs[j].MapPos.X && y === Players[i].Bombs[j].MapPos.Y) {
+
+                        isValid = false;
+
+                    }
+
+                }
+
+            }
+            
+            return isValid;
         }
 
         //function calculateSupposedPosition(player, x, y) {
@@ -465,9 +392,8 @@
 
             ctx.clearRect(0, 0, c.width, c.height);
             drawMap();
+            drawBombs();
             drawPlayers();
-            //drawspawnPoints();
-
         };
 
         $(document).keydown(function (e) {
@@ -503,6 +429,27 @@
                         Players[0].XKeys.left = true;
                         Players[0].currentDirection = Direction.LEFT;
                     } break;
+/*SPACE*/           case 32: {
+                        if (!timer.stopped) {
+
+                            if (Players[0].amountOfBombs > 0) {
+
+                                if (isValidPlaceToLayBomb(Players[0].MapPos.X, Players[0].MapPos.Y)) {
+
+                                    Players[0].amountOfBombs = Players[0].amountOfBombs - 1;
+                                    Players[0].Bombs.push(new Bomb(Players[0].MapPos.X, Players[0].MapPos.Y, bombType.type_basic));
+                                    Players[0].dropBomb(Players[0].MapPos.X, Players[0].MapPos.Y, Players[0], Players[0].Bombs[0]);
+
+                                    setTimeout(function () {
+                                        Players[0].Bombs.shift();
+                                    }, explosionTime);
+
+                                }
+
+                            } 
+
+                        }
+                    } break;
 
 /*Player 2*/
 
@@ -524,6 +471,27 @@
 /*LEFT*/            case 37: {
                         Players[1].XKeys.left = true;
                         Players[1].currentDirection = Direction.LEFT;
+                    } break;
+/*CONTROL*/         case 17: {
+                        if (!timer.stopped) {
+
+                            if (Players[1].amountOfBombs > 0) {
+
+                                if (isValidPlaceToLayBomb(Players[1].MapPos.X, Players[1].MapPos.Y)) {
+
+                                    Players[1].amountOfBombs = Players[1].amountOfBombs - 1;
+                                    Players[1].Bombs.push(new Bomb(Players[1].MapPos.X, Players[1].MapPos.Y, bombType.type_basic));
+                                    Players[1].dropBomb(Players[1].MapPos.X, Players[1].MapPos.Y, Players[1], Players[1].Bombs[0]);
+
+                                    setTimeout(function () {
+                                        Players[1].Bombs.shift();
+                                    }, explosionTime);
+
+                                }
+
+                            } 
+                                
+                        }
                     } break;
 
             }
@@ -577,12 +545,12 @@
         function Player(x, y, id, color) {
 
             this.MapPos = {
-                X: Math.floor(x / blockSize),
-                Y: Math.floor(y / blockSize)
-            },
-            this.CanvasPos = {
                 X: x,
                 Y: y
+            },
+            this.CanvasPos = {
+                X: Math.floor(x * blockSize),
+                Y: Math.floor(y * blockSize)
             },
             this.Size = {
                 Width: playerSize,
@@ -601,50 +569,68 @@
             this.playerSpeed = 1,
             this.currentDirection = Direction.RIGHT,
             this.amountOfBombs = initialAmountOfBombs,
-            this.Bombs = [
-                new Bomb(bombType.type_basic),
-                new Bomb(bombType.type_basic),
-            ],
-            this.DropBomb = function (x, y) {
-                if (this.Bombs.length > 0) {
-                    this.Bombs[0].Drop();
-                    console.log("Bomb placed at X: " + x, "Y: " + y);
-                    this.Bombs.splice(-1, 1);
-                } else {
-                    console.log("No bombs left!");
-                }
+            this.explosionRange = initialBombRange,
+            this.Bombs = [],
+            this.dropBomb = function (x, y, player, bombType) {
+                
+                setTimeout(function () {
+                    player.Bombs[0].Explode(x, y, player, player.Bombs[0]);
+                }, explosionTime);
             }
 
         }
 
-        function Bomb(bombType) {
+        function Bomb(mapPosX, mapPosY, bombType) {
 
             this.Type = bombType,
-                this.MapPos = {
-                    X: 0,
-                    Y: 0
-                },
-                this.CanvasPos = {
-                    X: 0,
-                    Y: 0
-                },
-                //this.Size = {
-                //    Width: blockSize,
-                //    Height: blockSize
-                //},
-                //this.bombColor = color,
-                this.Damage = 1,
-                this.Duration = 3000,
-                this.Radius = initialBombRadius,
-                this.Drop = function () {
-                    Players[playerID].Bombs.splice(-1, 1);
-                    setTimeout(this.Explode(), this.Duration);
-                    console.log("Bombs length: " + Players[0].Bombs.length);
+            this.MapPos = {
+                X: mapPosX,
+                Y: mapPosY
+            },
+            this.CanvasPos = {
+                X: Math.floor(mapPosX * blockSize),
+                Y: Math.floor(mapPosY * blockSize)
+            },
+            this.Damage = 1,
+            //this.Radius = initialBombRadius,
+            this.Explode = function (x, y, player, bomb) {
 
-                },
-                this.Explode = function () {
-                    Players[playerID].push(new Bomb());
+                player.amountOfBombs = player.amountOfBombs + 1;
+                var explosionRadius = returnSurroundings(x, y, player.explosionRange);
+                var onFireBlocks = [];
+                onFireBlocks.push(explosionRadius.Center)
+                explosionRadius.Center.OnFire = true;
+                
+                for (var i = 0; i < explosionRadius.Directions.length; i++) {
+
+                    for (var j = 0; j < explosionRadius.Directions[i].length; j++) {
+
+                        if (explosionRadius.Directions[i][j] != null) {
+
+                            if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_empty) {
+
+                                onFireBlocks.push(explosionRadius.Directions[i][j]);
+                                explosionRadius.Directions[i][j].OnFire = true;
+
+                            }
+
+                        }
+
+                    }
+
                 }
+
+                
+
+                setTimeout(function () {
+                    for (var i = 0; i < onFireBlocks.length; i++) {
+                        onFireBlocks[i].OnFire = false;
+                    }
+                }, explosionTime);
+
+                console.log(explosionRadius);
+                console.log("Bomb exploded at X: " + x, "Y: " + y);
+            }
 
         }
 
