@@ -19,10 +19,16 @@
         var timer = new Timer();
         timer.Interval = 10;
         var blockSize = 40;
+        var playerSize = 20;
+        var initialBombRadius = 2;
+        var initialAmountOfBombs = 1;
         var blockType = {
             type_empty: 0,
             type_wall: 1,
             type_crate: 2
+        };
+        var bombType = {
+            type_basic: 0
         };
         var mapWidth = document.getElementById('cvs').width / blockSize;
         var mapHeight = document.getElementById('cvs').height / blockSize;
@@ -35,24 +41,25 @@
         };
         var spawnPoints = [
             {
-                X: 40,
-                Y: 40
+                X: 1,
+                Y: 1
             },
             {
-                X: 600,
-                Y: 40
+                X: 15,
+                Y: 1
             },
             {
-                X: 40,
-                Y: 440
+                X: 1,
+                Y: 11
             },
             {
-                X: 600,
-                Y: 440
+                X: 15,
+                Y: 11
             }
         ];
         var reservedBlocks = [];
-        var reservedBlocksPercentage = 0.7;
+        var amountOfReservedBlocksPerDirection = 2;
+        var cratesPercentage = 0.7;
         var Players = [
             new Player(spawnPoints[0].X, spawnPoints[0].Y, 1, 'blue'),
             new Player(spawnPoints[1].X, spawnPoints[1].Y, 2, 'red')
@@ -126,7 +133,7 @@
                     if (map[j].CanvasPos.X === spawnPoints[i].X && map[j].CanvasPos.Y === spawnPoints[i].Y) {
 
                         for (var h = 0; h < map.length; h++) {
-                            
+
                             //Check for the block above the spawnpoint
                             if (map[j].CanvasPos.X === map[h].CanvasPos.X && map[j].CanvasPos.Y - 40 === map[h].CanvasPos.Y) {
 
@@ -216,8 +223,89 @@
                     }
 
                 }
-                
+
             }
+
+        }
+
+        function addReservedBlocks2() {
+
+            //Loop through spawnpoints
+            for (var i = 0; i < spawnPoints.length; i++) {
+
+                //Add spawnpoints to reservedBlocks[]
+                reservedBlocks.push({
+                    X: spawnPoints[i].X,
+                    Y: spawnPoints[i].Y
+                });
+
+            }
+
+        }
+
+        function findBlock(posX, posY) {
+
+            for (var i = 0; i < map.length; i++) {
+
+                if(posX === map[i].MapPos.X && posY === map[i].MapPos.Y) {
+
+                    return map[i];
+                    break;
+
+                }
+
+            }
+
+        }
+
+        function returnSurroundings(posX, posY, range) {
+
+            var Surroundings = {
+
+                Range: range,
+                Center: {
+                    X: posX,
+                    Y: posY
+                },
+                Directions: [
+                    [],
+                    [],
+                    [],
+                    []
+                ]
+
+            };
+
+            for (var i = 0, d = 0, r = 1; i < 4 * range; i++) {
+
+                if(i != 0 && i % range === 0) {
+                    d++;
+                }
+                if (r === range + 1) {
+                    r = 1;
+                }
+                switch(d) {
+                    case 0: {
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X, Surroundings.Center.Y - r));
+                    } break;
+                    case 1: {
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X + r, Surroundings.Center.Y));
+                    } break;
+                    case 2: {
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X, Surroundings.Center.Y + r));
+                    } break;
+                    case 3: {
+                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.X - r, Surroundings.Center.Y));
+                    } break;
+                }
+                r++;
+
+            };
+
+            console.log(Surroundings);
+
+
+
 
         }
 
@@ -241,7 +329,7 @@
 
                     if (!isReserved) {
 
-                        if (Math.random() < reservedBlocksPercentage) {
+                        if (Math.random() < cratesPercentage) {
 
                             map[i].BlockType.blockType = blockType.type_crate;
 
@@ -297,14 +385,14 @@
             drawMap();
             //drawspawnPoints();
             drawPlayers();
-            
+
         }
 
         function movePlayer(player) {
 
             posX = player.CanvasPos.X;
             posY = player.CanvasPos.Y;
-            
+
             if (player.XKeys.right === true && player.XKeys.left === false) {
                 player.CanvasPos.X = player.CanvasPos.X + player.playerSpeed;
             }
@@ -319,7 +407,7 @@
                 player.CanvasPos.Y = player.CanvasPos.Y + player.playerSpeed;
             }
 
-            
+
 
             for (var i = 0; i < map.length; i++) {
                 if (map[i].BlockType.blockType === blockType.type_wall) {
@@ -374,228 +462,13 @@
             for (var i = 0; i < Players.length; i++) {
                 movePlayer(Players[i]);
             }
-            //for (var i = 0; i < Players.length; i++) {
-
-            //    if (Players[i].keyPressed === true) {
-
-            //        switch (Players[i].currentDirection) {
-
-            //            case Direction.UP:
-            //            {
-
-            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], 0, -Players[i].playerSpeed);
-
-            //                    //updateSections(supposedPosition);
-
-            //                    //for (var p = 0; p < map.length; p++) {
-
-            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
-            //                    //        if (checkCollision(supposedPosition.Sections.UpLeft, map[p]) && !checkCollision(supposedPosition.Sections.UpRight, map[p])) {
-            //                    //            Players[i].CanvasPos.X += Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else if (!checkCollision(supposedPosition.Sections.UpLeft, map[p]) && checkCollision(supposedPosition.Sections.UpRight, map[p])) {
-            //                    //            Players[i].CanvasPos.X -= Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else {
-            //                    //            break;
-            //                    //        }
-
-            //                    //    }
-            //                    //    if (p === map.length - 1) {
-            //                    //        Players[i].CanvasPos.Y -= Players[i].playerSpeed;
-            //                    //        Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
-            //                    //        updateSections(Players[i]);
-            //                    //    }
-
-            //                    //}
-
-            //                    Players[i].CanvasPos.Y -= Players[i].playerSpeed;
-            //                    Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
-
-            //            } break;
-            //            case Direction.RIGHT:
-            //            {
-
-            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], Players[i].playerSpeed, 0);
-
-            //                    //updateSections(supposedPosition);
-
-            //                    //for (var p = 0; p < map.length; p++) {
-
-            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
-            //                    //        if (checkCollision(supposedPosition.Sections.UpRight, map[p]) && !checkCollision(supposedPosition.Sections.DownRight, map[p])) {
-            //                    //            Players[i].CanvasPos.Y += Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else if (!checkCollision(supposedPosition.Sections.UpRight, map[p]) && checkCollision(supposedPosition.Sections.DownRight, map[p])) {
-            //                    //            Players[i].CanvasPos.Y -= Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else {
-            //                    //            break;
-            //                    //        }
-            //                    //    }
-            //                    //    if (p === map.length - 1) {
-            //                    //        Players[i].CanvasPos.X += Players[i].playerSpeed;
-            //                    //        Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //        updateSections(Players[i]);
-            //                    //    }
-
-            //                    //}
-
-            //                    Players[i].CanvasPos.X += Players[i].playerSpeed;
-            //                    Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-
-            //            } break;
-            //            case Direction.DOWN:
-            //            {
-
-            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], 0, Players[i].playerSpeed);
-
-            //                    //updateSections(supposedPosition);
-
-            //                    //for (var p = 0; p < map.length; p++) {
-
-            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
-            //                    //        if (checkCollision(supposedPosition.Sections.DownRight, map[p]) && !checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
-            //                    //            Players[i].CanvasPos.X -= Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else if (!checkCollision(supposedPosition.Sections.DownRight, map[p]) && checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
-            //                    //            Players[i].CanvasPos.X += Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else {
-            //                    //            break;
-            //                    //        }
-            //                    //    }
-            //                    //    if (p === map.length - 1) {
-            //                    //        Players[i].CanvasPos.Y += Players[i].playerSpeed;
-            //                    //        Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
-            //                    //        updateSections(Players[i]);
-            //                    //    }
-
-            //                    //}
-
-            //                    Players[i].CanvasPos.Y += Players[i].playerSpeed;
-            //                    Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.Y / blockSize);
-
-            //            } break;
-            //            case Direction.LEFT:
-            //            {
-
-            //                    //var supposedPosition = new calculateSupposedPosition(Players[i], -Players[i].playerSpeed, 0);
-
-            //                    //updateSections(supposedPosition);
-
-            //                    //for (var p = 0; p < map.length; p++) {
-
-            //                    //    if (map[p].BlockType.blockType === blockType.type_wall && checkCollision(supposedPosition, map[p])) {
-            //                    //        if (checkCollision(supposedPosition.Sections.UpLeft, map[p]) && !checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
-            //                    //            Players[i].CanvasPos.Y += Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else if (!checkCollision(supposedPosition.Sections.UpLeft, map[p]) && checkCollision(supposedPosition.Sections.DownLeft, map[p])) {
-            //                    //            Players[i].CanvasPos.Y -= Players[i].playerSpeed;
-            //                    //            Players[i].MapPos.Y = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //            updateSections(Players[i]);
-            //                    //        }
-            //                    //        else {
-            //                    //            break;
-            //                    //        }
-            //                    //    }
-            //                    //    if (p === map.length - 1) {
-            //                    //        Players[i].CanvasPos.X -= Players[i].playerSpeed;
-            //                    //        Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-            //                    //        updateSections(Players[i]);
-            //                    //    }
-
-            //                    //}
-
-            //                    Players[i].CanvasPos.X -= Players[i].playerSpeed;
-            //                    Players[i].MapPos.X = Math.floor(Players[i].CanvasPos.X / blockSize);
-
-            //            } break;
-
-            //        }
-
-            //    }
-
-            //}
 
             ctx.clearRect(0, 0, c.width, c.height);
             drawMap();
             drawPlayers();
             //drawspawnPoints();
-            
-
-
 
         };
-
-
-
-        //$(document).keydown(function (e) {
-
-        //    switch (e.keyCode) {
-
-
-        //        ///*W*/           case 87: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[0].currentDirection = Direction.UP;
-        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
-        //        //                    }
-        //        //                } break;
-        //        ///*D*/           case 68: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[0].currentDirection = Direction.RIGHT;
-        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
-        //        //                    }
-        //        //                } break;
-        //        ///*S*/           case 83: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[0].currentDirection = Direction.DOWN;
-        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
-        //        //                    }
-        //        //                } break;
-        //        ///*A*/           case 65: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[0].currentDirection = Direction.LEFT;
-        //        //                        document.getElementById('demo').innerHTML = Players[0].currentDirection;
-        //        //                    }
-        //        //                } break;
-        //        ///*UP*/          case 38: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[1].currentDirection = Direction.UP;
-        //        //                    }
-        //        //                } break;
-        //        ///*RIGHT*/       case 39: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[1].currentDirection = Direction.RIGHT;
-        //        //                    }
-        //        //                } break;
-        //        ///*DOWN*/        case 40: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[1].currentDirection = Direction.DOWN;
-        //        //                    }
-        //        //                } break;
-        //        ///*LEFT*/        case 37: {
-        //        //                    if (!timer.stopped) {
-        //        //                        Players[1].currentDirection = Direction.LEFT;
-        //        //                    }
-        //        //                } break;
-        //    }
-
-        //});
 
         $(document).keydown(function (e) {
 
@@ -644,7 +517,7 @@
                     } break;
 
 /*DOWN*/            case 40: {
-                        Players[1].YKeys.down = true; 
+                        Players[1].YKeys.down = true;
                         Players[1].currentDirection = Direction.DOWN;
                     } break;
 
@@ -666,15 +539,15 @@
 /*W*/           case 87: {
                     Players[0].YKeys.up = false;
                 } break;
-                
+
 /*D*/           case 68: {
                     Players[0].XKeys.right = false;
                 } break;
-                
+
 /*S*/           case 83: {
                     Players[0].YKeys.down = false;
                 } break;
-                
+
 /*A*/           case 65: {
                     Players[0].XKeys.left = false;
                 } break;
@@ -701,7 +574,7 @@
 
         });
 
-        function Player(x, y, number, color) {
+        function Player(x, y, id, color) {
 
             this.MapPos = {
                 X: Math.floor(x / blockSize),
@@ -712,8 +585,8 @@
                 Y: y
             },
             this.Size = {
-                Width: 30,
-                Height: 30
+                Width: playerSize,
+                Height: playerSize
             },
             this.XKeys = {
                 right: false,
@@ -723,10 +596,55 @@
                 up: false,
                 down: false
             },
-            this.Number = number,
+            this.playerID = id,
             this.playerColor = color,
             this.playerSpeed = 1,
-            this.currentDirection = Direction.RIGHT
+            this.currentDirection = Direction.RIGHT,
+            this.amountOfBombs = initialAmountOfBombs,
+            this.Bombs = [
+                new Bomb(bombType.type_basic),
+                new Bomb(bombType.type_basic),
+            ],
+            this.DropBomb = function (x, y) {
+                if (this.Bombs.length > 0) {
+                    this.Bombs[0].Drop();
+                    console.log("Bomb placed at X: " + x, "Y: " + y);
+                    this.Bombs.splice(-1, 1);
+                } else {
+                    console.log("No bombs left!");
+                }
+            }
+
+        }
+
+        function Bomb(bombType) {
+
+            this.Type = bombType,
+                this.MapPos = {
+                    X: 0,
+                    Y: 0
+                },
+                this.CanvasPos = {
+                    X: 0,
+                    Y: 0
+                },
+                //this.Size = {
+                //    Width: blockSize,
+                //    Height: blockSize
+                //},
+                //this.bombColor = color,
+                this.Damage = 1,
+                this.Duration = 3000,
+                this.Radius = initialBombRadius,
+                this.Drop = function () {
+                    Players[playerID].Bombs.splice(-1, 1);
+                    setTimeout(this.Explode(), this.Duration);
+                    console.log("Bombs length: " + Players[0].Bombs.length);
+
+                },
+                this.Explode = function () {
+                    Players[playerID].push(new Bomb());
+                }
 
         }
 
