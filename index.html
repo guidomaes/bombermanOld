@@ -21,9 +21,10 @@
         timer.Interval = 10;
         var blockSize = 40;
         var playerSize = 20;
-        var explosionTime = 3000;
+        var droppedBombs = [];
+        var explosionTime = 2000;
         var initialBombRange = 2;
-        var initialAmountOfBombs = 3;
+        var initialAmountOfBombs = 10;
         var blockType = {
             type_empty: 0,
             type_wall: 1,
@@ -64,7 +65,7 @@
         var cratesPercentage = 0.7;
         var Players = [
             new Player(spawnPoints[0].X, spawnPoints[0].Y, 1, 'blue'),
-            new Player(spawnPoints[1].X, spawnPoints[1].Y, 2, 'red')
+            new Player(spawnPoints[1].X, spawnPoints[1].Y, 2, 'yellow')
         ];
 
         function makeMap() {
@@ -111,7 +112,29 @@
                         BlockType: {
                             blockType: blockType.type_empty
                         },
-                        OnFire: false
+                        HasBomb: false,
+                        OnFire: false,
+                        CatchOnFire: function (x, y) {
+                            this.OnFire = true;
+                            if (this.HasBomb) {
+                                for (var i = 0; i < droppedBombs.length; i++) {
+
+                                    if (droppedBombs[i].MapPos.X === x && droppedBombs[i].MapPos.Y === y) {
+                                        
+                                        droppedBombs[i].Explode(this.MapPos.X, this.MapPos.Y, droppedBombs[i].bombType, droppedBombs[i].Player);
+                                        droppedBombs.splice(i, 1);
+                                        
+                                    }
+
+                                }
+                                
+                            }
+                            setTimeout(function () {
+                                findBlock(x, y).OnFire = false;
+                            }, explosionTime)
+                            
+                        }
+                        
                     });
                 }
                 x++;
@@ -254,7 +277,11 @@
                     ctx.fillStyle = "black";
                 }
                 else if (map[i].BlockType.blockType === blockType.type_empty) {
-                    ctx.fillStyle = "green";
+                    if (map[i].OnFire === true) {
+                        ctx.fillStyle = "orange";
+                    } else {
+                        ctx.fillStyle = "green";
+                    }
                 }
                 else if (map[i].BlockType.blockType === blockType.type_crate) {
                     ctx.fillStyle = "brown";
@@ -275,11 +302,9 @@
         }
 
         function drawBombs() {
-            ctx.fillStyle = 'orange';
-            for (var i = 0; i < Players.length; i++) {
-                for (var j = 0; j < Players[i].Bombs.length; j++){
-                    ctx.fillRect(Players[i].Bombs[j].CanvasPos.X, Players[i].Bombs[j].CanvasPos.Y, blockSize, blockSize);
-                }
+            ctx.fillStyle = 'red';
+            for (var j = 0; j < droppedBombs.length; j++){
+                ctx.fillRect(droppedBombs[j].CanvasPos.X, droppedBombs[j].CanvasPos.Y, blockSize, blockSize);
             }
             ctx.fillStyle = 'black';
         }
@@ -349,15 +374,11 @@
 
             var isValid = true;
 
-            for (var i = 0; i < Players.length; i++) {
+            for (var j = 0; j < droppedBombs.length; j++) {
 
-                for (var j = 0; j < Players[i].Bombs.length; j++) {
+                if (x === droppedBombs[j].MapPos.X && y === droppedBombs[j].MapPos.Y) {
 
-                    if (x === Players[i].Bombs[j].MapPos.X && y === Players[i].Bombs[j].MapPos.Y) {
-
-                        isValid = false;
-
-                    }
+                    isValid = false;
 
                 }
 
@@ -438,11 +459,10 @@
                                 if (isValidPlaceToLayBomb(Players[0].MapPos.X, Players[0].MapPos.Y)) {
 
                                     Players[0].amountOfBombs = Players[0].amountOfBombs - 1;
-                                    Players[0].Bombs.push(new Bomb(Players[0].MapPos.X, Players[0].MapPos.Y, bombType.type_basic));
-                                    Players[0].dropBomb(Players[0].MapPos.X, Players[0].MapPos.Y, Players[0], Players[0].Bombs[0]);
+                                    Players[0].dropBomb(Players[0].MapPos.X, Players[0].MapPos.Y, Players[1].equippedBomb, Players[0]);
 
                                     setTimeout(function () {
-                                        Players[0].Bombs.shift();
+                                        droppedBombs.shift();
                                     }, explosionTime);
 
                                 }
@@ -481,11 +501,10 @@
                                 if (isValidPlaceToLayBomb(Players[1].MapPos.X, Players[1].MapPos.Y)) {
 
                                     Players[1].amountOfBombs = Players[1].amountOfBombs - 1;
-                                    Players[1].Bombs.push(new Bomb(Players[1].MapPos.X, Players[1].MapPos.Y, bombType.type_basic));
-                                    Players[1].dropBomb(Players[1].MapPos.X, Players[1].MapPos.Y, Players[1], Players[1].Bombs[0]);
+                                    Players[1].dropBomb(Players[1].MapPos.X, Players[1].MapPos.Y, Players[1].equippedBomb, Players[1]);
 
                                     setTimeout(function () {
-                                        Players[1].Bombs.shift();
+                                        droppedBombs.shift();
                                     }, explosionTime);
 
                                 }
@@ -571,18 +590,25 @@
             this.currentDirection = Direction.RIGHT,
             this.amountOfBombs = initialAmountOfBombs,
             this.explosionRange = initialBombRange,
-            this.Bombs = [],
-            this.dropBomb = function (x, y, player, bombType) {
-                
+            this.equippedBomb = bombType.type_basic;
+            this.dropBomb = function (x, y, bombType, player) {
+
+                droppedBombs.push(new Bomb(x, y, bombType, player));
+                findBlock(x, y).HasBomb = true;
+
                 setTimeout(function () {
-                    player.Bombs[0].Explode(x, y, player, player.Bombs[0]);
+                    if (droppedBombs.length > 0) {
+                        droppedBombs[0].Explode(x, y, bombType, player);
+                    }
                 }, explosionTime);
+
             }
 
         }
 
-        function Bomb(mapPosX, mapPosY, bombType) {
+        function Bomb(mapPosX, mapPosY, bombType, player) {
 
+            this.Player = player,
             this.Type = bombType,
             this.MapPos = {
                 X: mapPosX,
@@ -592,15 +618,18 @@
                 X: Math.floor(mapPosX * blockSize),
                 Y: Math.floor(mapPosY * blockSize)
             },
+            this.Size = {
+                Width: blockSize,
+                Height: blockSize
+            },
             this.Damage = 1,
             //this.Radius = initialBombRadius,
-            this.Explode = function (x, y, player, bomb) {
+            this.Explode = function (x, y, bombType, player) {
 
+                findBlock(x, y).HasBomb = false;
                 player.amountOfBombs = player.amountOfBombs + 1;
                 var explosionRadius = returnSurroundings(x, y, player.explosionRange);
-                var onFireBlocks = [];
-                onFireBlocks.push(explosionRadius.Center)
-                explosionRadius.Center.OnFire = true;
+                explosionRadius.Center.CatchOnFire(x, y);
                 
                 for (var i = 0; i < explosionRadius.Directions.length; i++) {
 
@@ -610,8 +639,17 @@
 
                             if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_empty) {
 
-                                onFireBlocks.push(explosionRadius.Directions[i][j]);
-                                explosionRadius.Directions[i][j].OnFire = true;
+                                explosionRadius.Directions[i][j].CatchOnFire(explosionRadius.Directions[i][j].MapPos.X, explosionRadius.Directions[i][j].MapPos.Y);
+
+                            } else if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_crate) {
+
+                                explosionRadius.Directions[i][j].BlockType.blockType = blockType.type_empty;
+                                explosionRadius.Directions[i][j].CatchOnFire(explosionRadius.Directions[i][j].MapPos.X, explosionRadius.Directions[i][j].MapPos.Y);
+                                break;
+
+                            } else if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_wall) {
+
+                                break;
 
                             }
 
@@ -620,17 +658,18 @@
                     }
 
                 }
-
                 
 
-                setTimeout(function () {
-                    for (var i = 0; i < onFireBlocks.length; i++) {
-                        onFireBlocks[i].OnFire = false;
-                    }
-                }, explosionTime);
-
-                console.log(explosionRadius);
-                console.log("Bomb exploded at X: " + x, "Y: " + y);
+                //setTimeout(function () {
+                //    for (var i = 0; i < onFireBlocks.length; i++) {
+                //        onFireBlocks[i].OnFire = false;
+                //    }
+                //    onFireBlocks = [];
+                //    console.log(onFireBlocks);
+                //}, explosionTime);
+                
+                //console.log(explosionRadius);
+                //console.log("Bomb exploded at X: " + x, "Y: " + y);
             }
 
         }
