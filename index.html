@@ -2,8 +2,9 @@
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
 
-    <!-- <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script> -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
 	<script src="jquery-3.3.1.min.js"></script>
+	
     <title>Bomberman</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -18,13 +19,15 @@
         var c = document.getElementById('cvs');
         var ctx = c.getContext('2d');
         var timer = new Timer();
-        timer.Interval = 10;
+        timer.interval = 5;
+        timer.isLoop = true;
         var blockSize = 40;
         var playerSize = 20;
         var droppedBombs = [];
         var explosionTime = 2000;
+        var initialHealth = 3;
         var initialBombRange = 2;
-        var initialAmountOfBombs = 10;
+        var initialAmountOfBombs = 20;
         var blockType = {
             type_empty: 0,
             type_wall: 1,
@@ -114,9 +117,30 @@
                         },
                         HasBomb: false,
                         OnFire: false,
+                        //SecondsOnFire: 0,
+                        LetFireDieTimer: new Timer(),
                         CatchOnFire: function (x, y) {
-                            this.OnFire = true;
+
+                            //this.SecondsOnFire = this.SecondsOnFire + explosionTime;
+                            var thisBlock = findBlock(x, y);
+
+                            if (thisBlock.OnFire) {
+                                //thisBlock.LetFireDieTimer.add(Date.now(), explosionTime);
+                                clearTimeout(thisBlock.LetFireDieTimer.timeout);
+                                thisBlock.LetFireDieTimer.start();
+                            } else {
+                                //thisBlock.LetFireDieTimer = new Timer(),
+                                //thisBlock.LetFireDieTimer.isLoop = false;
+                                thisBlock.LetFireDieTimer.interval = explosionTime;
+                                thisBlock.LetFireDieTimer.tick = function () {
+                                    thisBlock.OnFire = false;
+                                }
+                                thisBlock.OnFire = true;
+                                thisBlock.LetFireDieTimer.start();
+                            }
+
                             if (this.HasBomb) {
+
                                 for (var i = 0; i < droppedBombs.length; i++) {
 
                                     if (droppedBombs[i].MapPos.X === x && droppedBombs[i].MapPos.Y === y) {
@@ -129,9 +153,21 @@
                                 }
                                 
                             }
-                            setTimeout(function () {
-                                findBlock(x, y).OnFire = false;
-                            }, explosionTime)
+
+                            //for (var i = 0; i < this.SecondsOnFire + 1; i++) {
+
+                            //    setTimeout(function () {
+
+                            //        if (thisBlock.SecondsOnFire > 0) {
+                            //            thisBlock.SecondsOnFire = thisBlock.SecondsOnFire - 1;
+                                        
+                            //        } else {
+                            //            thisBlock.OnFire = false;
+                            //        }
+
+                            //    }, 1000)
+
+                            //}
                             
                         }
                         
@@ -302,14 +338,19 @@
         }
 
         function drawBombs() {
+
             ctx.fillStyle = 'red';
+
             for (var j = 0; j < droppedBombs.length; j++){
                 ctx.fillRect(droppedBombs[j].CanvasPos.X, droppedBombs[j].CanvasPos.Y, blockSize, blockSize);
             }
+
             ctx.fillStyle = 'black';
+
         }
 
         function newGame() {
+
             makeMap();
             addReservedBlocks();
             generateCrates();
@@ -387,26 +428,9 @@
             return isValid;
         }
 
-        //function calculateSupposedPosition(player, x, y) {
-
-        //    this.CanvasPos = {
-        //        X: player.CanvasPos.X + x,
-        //        Y: player.CanvasPos.Y + y
-        //    };
-
-        //    this.Size = {
-        //        Width: blockSize,
-        //        Height: blockSize
-        //    };
-
-        //    this.Sections = {};
-
-        //}
-
         newGame();
 
-
-        timer.Tick = function () {
+        timer.tick = function () {
 
             for (var i = 0; i < Players.length; i++) {
                 movePlayer(Players[i]);
@@ -424,9 +448,9 @@
 
 /*ENTER*/           case 13: {
                         if (timer.stopped) {
-                            timer.Start();
+                            timer.start();
                         } else {
-                            timer.Stop();
+                            timer.stop();
                         }
                     } break;
 
@@ -493,7 +517,7 @@
                         Players[1].XKeys.left = true;
                         Players[1].currentDirection = Direction.LEFT;
                     } break;
-/*CONTROL*/         case 17: {
+/*FORWARD SLASH*/   case 191: {
                         if (!timer.stopped) {
 
                             if (Players[1].amountOfBombs > 0) {
@@ -587,6 +611,7 @@
             this.playerID = id,
             this.playerColor = color,
             this.playerSpeed = 1,
+            this.health = initialHealth;
             this.currentDirection = Direction.RIGHT,
             this.amountOfBombs = initialAmountOfBombs,
             this.explosionRange = initialBombRange,
@@ -719,29 +744,74 @@
         //    };
         //}
 
+        //function Timer(callback, time) {
+        //    this.setTimeout(callback, time);
+        //}
 
+        //Timer.prototype.setTimeout = function (callback, time) {
+        //    var self = this;
+        //    if (this.timer) {
+        //        clearTimeout(this.timer);
+        //    }
+        //    this.finished = false;
+        //    this.callback = callback;
+        //    this.time = time;
+        //    this.timer = setTimeout(function () {
+        //        self.finished = true;
+        //        callback();
+        //    }, time);
+        //    this.start = Date.now();
+        //}
+
+        //Timer.prototype.add = function (time) {
+        //    if (!this.finished) {
+        //        // add time to time left
+        //        time = this.time - (Date.now() - this.start) + time;
+        //        this.setTimeout(this.callback, time);
+        //    }
+        //}
 
         function Timer() {
 
-            this.Interval = 0;
+            this.interval = 0;
             this.stopped = true;
-            this.Tick = function () { };
+            this.timeout;
+            this.timeStarted;
+            this.isLoop = false;
+            this.tick = function () { }
             this.ticki = function () {
+
                 if (!self.stopped) {
-                    self.Tick();
-                    self.continue();
+
+                    self.tick();
+
+                    if (self.isLoop) {
+                        self.continue();
+                    } else {
+                        self.stopped = true;
+                    }
+
                 }
-            };
-            this.Start = function () {
+
+            }
+            this.start = function () {
+                self.timeStarted = Date.now();
                 self.stopped = false;
                 self.continue();
-            };
+            }
             this.continue = function () {
-                setTimeout(this.ticki, this.Interval);
-            };
-            this.Stop = function () {
+                self.timeout = setTimeout(self.ticki, self.interval);
+            }
+            this.stop = function () {
                 self.stopped = true;
-            };
+            }
+            this.add = function (now, time) {
+                //console.log(self.interval - (Date.now() - self.timeStarted) + time);
+                var newTime = self.interval - (now - self.timeStarted) + time;
+                
+                clearTimeout(self.timeout);
+                self.timeout = setTimeout(self.ticki, newTime);
+            }
             var self = this;
 
         }
