@@ -24,7 +24,7 @@
         var blockSize = 40;
         var playerSize = 20;
         var droppedBombs = [];
-        var explosionTime = 2000;
+        var explosionTime = 1000;
         var initialHealth = 3;
         var initialBombRange = 2;
         var initialAmountOfBombs = 20;
@@ -116,6 +116,7 @@
                             blockType: blockType.type_empty
                         },
                         HasBomb: false,
+                        Bomb: null,
                         OnFire: false,
                         //SecondsOnFire: 0,
                         LetFireDieTimer: new Timer(),
@@ -414,17 +415,25 @@
         function isValidPlaceToLayBomb(x, y) {
 
             var isValid = true;
+            var block = findBlock(x, y);
 
-            for (var j = 0; j < droppedBombs.length; j++) {
+            //for (var j = 0; j < droppedBombs.length; j++) {
 
-                if (x === droppedBombs[j].MapPos.X && y === droppedBombs[j].MapPos.Y) {
+            //    if (x === droppedBombs[j].MapPos.X && y === droppedBombs[j].MapPos.Y) {
 
-                    isValid = false;
+                    
 
-                }
+            //    }
+
+            //}
+            
+            if (block.HasBomb === true || block.OnFire === true) {
+            
+                isValid = false;
 
             }
             
+
             return isValid;
         }
 
@@ -654,7 +663,8 @@
                 findBlock(x, y).HasBomb = false;
                 player.amountOfBombs = player.amountOfBombs + 1;
                 var explosionRadius = returnSurroundings(x, y, player.explosionRange);
-                explosionRadius.Center.CatchOnFire(x, y);
+                var blocksThatCatchFire = [];
+                blocksThatCatchFire.push(explosionRadius.Center);
                 
                 for (var i = 0; i < explosionRadius.Directions.length; i++) {
 
@@ -663,17 +673,16 @@
                         if (explosionRadius.Directions[i][j] != null) {
 
                             if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_empty) {
-
-                                explosionRadius.Directions[i][j].CatchOnFire(explosionRadius.Directions[i][j].MapPos.X, explosionRadius.Directions[i][j].MapPos.Y);
-
-                            } else if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_crate) {
-
-                                explosionRadius.Directions[i][j].BlockType.blockType = blockType.type_empty;
-                                explosionRadius.Directions[i][j].CatchOnFire(explosionRadius.Directions[i][j].MapPos.X, explosionRadius.Directions[i][j].MapPos.Y);
-                                break;
+                            
+                                blocksThatCatchFire.push(explosionRadius.Directions[i][j]);
 
                             } else if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_wall) {
+                            
+                                break;
 
+                            } else if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_crate) {
+                            
+                                blocksThatCatchFire.push(explosionRadius.Directions[i][j]);
                                 break;
 
                             }
@@ -684,92 +693,25 @@
 
                 }
                 
+                for (var i = 0; i < blocksThatCatchFire.length; i++) {
+                    
+                    switch (blocksThatCatchFire[i].BlockType.blockType) {
+                        
+                        case blockType.type_empty: {
+                            blocksThatCatchFire[i].CatchOnFire(blocksThatCatchFire[i].MapPos.X, blocksThatCatchFire[i].MapPos.Y);
+                        } break;
+                        case blockType.type_crate: {
+                            blocksThatCatchFire[i].BlockType.blockType = blockType.type_empty
+                            blocksThatCatchFire[i].CatchOnFire(blocksThatCatchFire[i].MapPos.X, blocksThatCatchFire[i].MapPos.Y);
+                        } break;
 
-                //setTimeout(function () {
-                //    for (var i = 0; i < onFireBlocks.length; i++) {
-                //        onFireBlocks[i].OnFire = false;
-                //    }
-                //    onFireBlocks = [];
-                //    console.log(onFireBlocks);
-                //}, explosionTime);
-                
-                //console.log(explosionRadius);
-                //console.log("Bomb exploded at X: " + x, "Y: " + y);
+                    }
+
+                }
+
             }
 
         }
-
-        //function updateSections(player) {
-        //    player.Sections = {
-        //        UpLeft: {
-        //            CanvasPos: {
-        //                X: player.CanvasPos.X,
-        //                Y: player.CanvasPos.Y
-        //            },
-        //            Size: {
-        //                Width: blockSize / 2,
-        //                Height: blockSize / 2
-        //            }
-        //        },
-        //        UpRight: {
-        //            CanvasPos: {
-        //                X: player.CanvasPos.X + blockSize / 2,
-        //                Y: player.CanvasPos.Y
-        //            },
-        //            Size: {
-        //                Width: blockSize / 2,
-        //                Height: blockSize / 2
-        //            }
-        //        },
-        //        DownLeft: {
-        //            CanvasPos: {
-        //                X: player.CanvasPos.X,
-        //                Y: player.CanvasPos.Y + blockSize / 2
-        //            },
-        //            Size: {
-        //                Width: blockSize / 2,
-        //                Height: blockSize / 2
-        //            }
-        //        },
-        //        DownRight: {
-        //            CanvasPos: {
-        //                X: player.CanvasPos.X + blockSize / 2,
-        //                Y: player.CanvasPos.Y + blockSize / 2
-        //            },
-        //            Size: {
-        //                Width: blockSize / 2,
-        //                Height: blockSize / 2
-        //            }
-        //        }
-        //    };
-        //}
-
-        //function Timer(callback, time) {
-        //    this.setTimeout(callback, time);
-        //}
-
-        //Timer.prototype.setTimeout = function (callback, time) {
-        //    var self = this;
-        //    if (this.timer) {
-        //        clearTimeout(this.timer);
-        //    }
-        //    this.finished = false;
-        //    this.callback = callback;
-        //    this.time = time;
-        //    this.timer = setTimeout(function () {
-        //        self.finished = true;
-        //        callback();
-        //    }, time);
-        //    this.start = Date.now();
-        //}
-
-        //Timer.prototype.add = function (time) {
-        //    if (!this.finished) {
-        //        // add time to time left
-        //        time = this.time - (Date.now() - this.start) + time;
-        //        this.setTimeout(this.callback, time);
-        //    }
-        //}
 
         function Timer() {
 
