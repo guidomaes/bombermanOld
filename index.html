@@ -19,16 +19,17 @@
         var c = document.getElementById('cvs');
         var ctx = c.getContext('2d');
         var timer = new Timer();
-        timer.interval = 30;
+        timer.interval = 20;
         timer.isLoop = true;
         var blockSize = 40;
         var playerSize = 20;
         var explosionTime = 2500;
         var onFireTime = 1500;
-        var initialHealth = 3;
+        var immuneAfterDamageTime = 3000;
         var initialBombRange = 2;
         var initialAmountOfBombs = 20;
         var initialPlayerSpeed = 2;
+        var initialPlayerHealth = 3;
         var blockType = {
             type_empty: 0,
             type_wall: 1,
@@ -40,36 +41,36 @@
         var mapWidth = document.getElementById('cvs').width / blockSize;
         var mapHeight = document.getElementById('cvs').height / blockSize;
         var map = [];
-        var Direction = {
-            UP: 0,
-            RIGHT: 1,
-            DOWN: 2,
-            LEFT: 3
-        };
+        //var Direction = {
+        //    UP: 0,
+        //    RIGHT: 1,
+        //    DOWN: 2,
+        //    LEFT: 3
+        //};
         var spawnPoints = [
             {
-                X: 1,
-                Y: 1
+                x: 1,
+                y: 1
             },
             {
-                X: 15,
-                Y: 1
+                x: 15,
+                y: 1
             },
             {
-                X: 1,
-                Y: 11
+                x: 1,
+                y: 11
             },
             {
-                X: 15,
-                Y: 11
+                x: 15,
+                y: 11
             }
         ];
         var reservedBlocks = [];
         var reservedBlocksInEachDirectionFromSpawnPoints = 2;
         var cratesPercentage = 0.7;
-        var Players = [
-            new Player(spawnPoints[0].X, spawnPoints[0].Y, 1, 'blue'),
-            new Player(spawnPoints[1].X, spawnPoints[1].Y, 2, 'yellow')
+        var players = [
+            new Player(spawnPoints[0].x, spawnPoints[0].y, 1, 'blue'),
+            new Player(spawnPoints[1].x, spawnPoints[1].y, 2, 'yellow')
         ];
 
         function makeMap() {
@@ -82,58 +83,60 @@
                 }
                 if (x === 0 || y === 0 || x === mapWidth - 1 || y === mapHeight - 1 || x % 2 === 0 && y % 2 === 0) {
                     map.push({
-                        MapPos: {
-                            X: x,
-                            Y: y
+                        mapPos: {
+                            x: x,
+                            y: y
                         },
-                        CanvasPos: {
-                            X: Math.floor(x * blockSize),
-                            Y: Math.floor(y * blockSize)
+                        canvasPos: {
+                            x: Math.floor(x * blockSize),
+                            y: Math.floor(y * blockSize)
                         },
-                        Size: {
-                            Width: blockSize,
-                            Height: blockSize
+                        size: {
+                            width: blockSize,
+                            height: blockSize
                         },
-                        BlockType: {
+                        blockType: {
                             blockType: blockType.type_wall
-                        }
+                        },
+                        walkThrough: false
                     });
                 }
                 else {
                     map.push({
-                        MapPos: {
-                            X: x,
-                            Y: y
+                        mapPos: {
+                            x: x,
+                            y: y
                         },
-                        CanvasPos: {
-                            X: Math.floor(x * blockSize),
-                            Y: Math.floor(y * blockSize)
+                        canvasPos: {
+                            x: Math.floor(x * blockSize),
+                            y: Math.floor(y * blockSize)
                         },
-                        Size: {
-                            Width: blockSize,
-                            Height: blockSize
+                        size: {
+                            width: blockSize,
+                            height: blockSize
                         },
-                        BlockType: {
+                        blockType: {
                             blockType: blockType.type_empty
                         },
-                        HasBomb: false,
-                        Bomb: null,
-                        OnFire: false,
-                        LetFireDieTimer: new Timer(),
-                        CatchOnFire: function (x, y, player) {
+                        walkThrough: true,
+                        hasBomb: false,
+                        bomb: null,
+                        onFire: false,
+                        letFireDieTimer: new Timer(),
+                        catchOnFire: function (x, y, player) {
 
                             var thisBlock = findBlock(x, y);
 
-                            if (thisBlock.OnFire) {
-                                clearTimeout(thisBlock.LetFireDieTimer.timeout);
-                                thisBlock.LetFireDieTimer.start();
+                            if (thisBlock.onFire) {
+                                clearTimeout(thisBlock.letFireDieTimer.timeout);
+                                thisBlock.letFireDieTimer.start();
                             } else {
-                                thisBlock.LetFireDieTimer.interval = onFireTime;
-                                thisBlock.LetFireDieTimer.tick = function () {
-                                    thisBlock.OnFire = false;
+                                thisBlock.letFireDieTimer.interval = onFireTime;
+                                thisBlock.letFireDieTimer.tick = function () {
+                                    thisBlock.onFire = false;
                                 }
-                                thisBlock.OnFire = true;
-                                thisBlock.LetFireDieTimer.start();
+                                thisBlock.onFire = true;
+                                thisBlock.letFireDieTimer.start();
                             }
 
                         }
@@ -152,21 +155,21 @@
 
                 //Add spawnpoints to reservedBlocks[]
                 reservedBlocks.push({
-                    X: spawnPoints[i].X,
-                    Y: spawnPoints[i].Y
+                    x: spawnPoints[i].x,
+                    y: spawnPoints[i].y
                 });
 
-                var surroundings = returnSurroundings(spawnPoints[i].X, spawnPoints[i].Y, reservedBlocksInEachDirectionFromSpawnPoints);
+                var surroundings = returnSurroundings(spawnPoints[i].x, spawnPoints[i].y, reservedBlocksInEachDirectionFromSpawnPoints);
 
-                for (var j = 0; j < surroundings.Directions.length; j++) {
+                for (var j = 0; j < surroundings.directions.length; j++) {
 
                     for (var k = 0; k < reservedBlocksInEachDirectionFromSpawnPoints; k++) {
 
-                        if (surroundings.Directions[j][k] != null) {
+                        if (surroundings.directions[j][k] != null) {
 
                             reservedBlocks.push({
-                                X: surroundings.Directions[j][k].MapPos.X,
-                                Y: surroundings.Directions[j][k].MapPos.Y
+                                x: surroundings.directions[j][k].mapPos.x,
+                                y: surroundings.directions[j][k].mapPos.y
                             });
 
                         }
@@ -183,7 +186,7 @@
 
             for (var i = 0; i < map.length; i++) {
 
-                if(posX === map[i].MapPos.X && posY === map[i].MapPos.Y) {
+                if(posX === map[i].mapPos.x && posY === map[i].mapPos.y) {
 
                     return map[i];
                     break;
@@ -196,11 +199,11 @@
 
         function returnSurroundings(posX, posY, range) {
 
-            var Surroundings = {
+            var surroundings = {
 
-                Range: range,
-                Center: findBlock(posX, posY),
-                Directions: [
+                range: range,
+                center: findBlock(posX, posY),
+                directions: [
                     [],
                     [],
                     [],
@@ -219,23 +222,23 @@
                 }
                 switch(d) {
                     case 0: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X, Surroundings.Center.MapPos.Y - r));
+                        surroundings.directions[d].push(findBlock(surroundings.center.mapPos.x, surroundings.center.mapPos.y - r));
                     } break;
                     case 1: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X + r, Surroundings.Center.MapPos.Y));
+                        surroundings.directions[d].push(findBlock(surroundings.center.mapPos.x + r, surroundings.center.mapPos.y));
                     } break;
                     case 2: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X, Surroundings.Center.MapPos.Y + r));
+                        surroundings.directions[d].push(findBlock(surroundings.center.mapPos.x, surroundings.center.mapPos.y + r));
                     } break;
                     case 3: {
-                        Surroundings.Directions[d].push(findBlock(Surroundings.Center.MapPos.X - r, Surroundings.Center.MapPos.Y));
+                        surroundings.directions[d].push(findBlock(surroundings.center.mapPos.x - r, surroundings.center.mapPos.y));
                     } break;
                 }
                 r++;
 
             };
 
-            return Surroundings;
+            return surroundings;
 
         }
 
@@ -243,12 +246,12 @@
 
             for (var i = 0; i < map.length; i++) {
 
-                if (map[i].BlockType.blockType === blockType.type_empty) {
+                if (map[i].blockType.blockType === blockType.type_empty) {
 
                     var isReserved = false;
                     for (var j = 0; j < reservedBlocks.length; j++) {
 
-                        if (map[i].MapPos.X === reservedBlocks[j].X && map[i].MapPos.Y === reservedBlocks[j].Y) {
+                        if (map[i].mapPos.x === reservedBlocks[j].x && map[i].mapPos.y === reservedBlocks[j].y) {
 
                             isReserved = true;
                             break;
@@ -261,7 +264,7 @@
 
                         if (Math.random() < cratesPercentage) {
 
-                            map[i].BlockType.blockType = blockType.type_crate;
+                            map[i].blockType.blockType = blockType.type_crate;
 
                         }
 
@@ -276,31 +279,31 @@
         function drawMap() {
 
             for (var i = 0; i < map.length; i++) {
-                if (map[i].BlockType.blockType === blockType.type_wall) {
+                if (map[i].blockType.blockType === blockType.type_wall) {
                     ctx.fillStyle = "black";
                 }
-                else if (map[i].BlockType.blockType === blockType.type_empty) {
-                    if (map[i].OnFire === true) {
+                else if (map[i].blockType.blockType === blockType.type_empty) {
+                    if (map[i].onFire === true) {
                         ctx.fillStyle = "orange";
-                    } else if (map[i].HasBomb) {
+                    } else if (map[i].hasBomb) {
                         ctx.fillStyle = "red";
                     } else {
                         ctx.fillStyle = "green";
                     }
                 }
-                else if (map[i].BlockType.blockType === blockType.type_crate) {
+                else if (map[i].blockType.blockType === blockType.type_crate) {
                     ctx.fillStyle = "brown";
                 }
-                ctx.fillRect(map[i].MapPos.X * blockSize, map[i].MapPos.Y * blockSize, blockSize, blockSize);
+                ctx.fillRect(map[i].mapPos.x * blockSize, map[i].mapPos.y * blockSize, blockSize, blockSize);
             }
 
         }
-
+        
         function drawPlayers() {
-
-            for (var i = 0; i < Players.length; i++) {
-                ctx.fillStyle = Players[i].playerColor;
-                ctx.fillRect(Players[i].CanvasPos.X, Players[i].CanvasPos.Y, Players[i].Size.Width, Players[i].Size.Height);
+            
+            for (var i = 0; i < players.length; i++) {
+                ctx.fillStyle = players[i].color;
+                ctx.fillRect(players[i].canvasPos.x, players[i].canvasPos.y, players[i].size.width, players[i].size.height);
                 ctx.fillStyle = 'black';
             }
 
@@ -318,46 +321,51 @@
 
         function movePlayer(player) {
 
-            posX = player.CanvasPos.X;
-            posY = player.CanvasPos.Y;
+            posX = player.canvasPos.x;
+            posY = player.canvasPos.y;
 
-            if (player.XKeys.right === true && player.XKeys.left === false) {
-                player.CanvasPos.X = player.CanvasPos.X + player.playerSpeed;
+            if (player.xKeys.right === true && player.xKeys.left === false) {
+                player.canvasPos.x = player.canvasPos.x + player.speed;
             }
-            else if (player.XKeys.right === false && player.XKeys.left === true) {
-                player.CanvasPos.X = player.CanvasPos.X - player.playerSpeed;
-            }
-
-            if (player.YKeys.up === true && player.YKeys.down === false) {
-                player.CanvasPos.Y = player.CanvasPos.Y - player.playerSpeed;
-            }
-            else if (player.YKeys.up === false && player.YKeys.down === true) {
-                player.CanvasPos.Y = player.CanvasPos.Y + player.playerSpeed;
+            else if (player.xKeys.right === false && player.xKeys.left === true) {
+                player.canvasPos.x = player.canvasPos.x - player.speed;
             }
 
-
+            if (player.yKeys.up === true && player.yKeys.down === false) {
+                player.canvasPos.y = player.canvasPos.y - player.speed;
+            }
+            else if (player.yKeys.up === false && player.yKeys.down === true) {
+                player.canvasPos.y = player.canvasPos.y + player.speed;
+            }
 
             for (var i = 0; i < map.length; i++) {
-                if (map[i].BlockType.blockType === blockType.type_wall || map[i].BlockType.blockType === blockType.type_crate) {
+
+                if (map[i].blockType.blockType === blockType.type_wall ||
+                    map[i].blockType.blockType === blockType.type_crate) {
+
                     if (checkCollision(player, map[i])) {
-                        player.CanvasPos.X = posX;
-                        player.CanvasPos.Y = posY;
+                        player.canvasPos.x = posX;
+                        player.canvasPos.y = posY;
                     }
-                } else {
-                    player.MapPos.X = Math.floor(player.CanvasPos.X / blockSize);
-                    player.MapPos.Y = Math.floor(player.CanvasPos.Y / blockSize);
+
+                } else if (map[i].blockType.blockType === blockType.type_empty) {
+
+                    player.mapPos.x = Math.floor(player.canvasPos.x / blockSize);
+                    player.mapPos.y = Math.floor(player.canvasPos.y / blockSize);
                     continue;
+                    
                 }
+
             }
 
         }
 
         function checkCollision(obj1, obj2) {
 
-            if (obj1.CanvasPos.X < obj2.CanvasPos.X + obj2.Size.Width &&
-                obj1.CanvasPos.X + obj1.Size.Width > obj2.CanvasPos.X &&
-                obj1.CanvasPos.Y < obj2.CanvasPos.Y + obj2.Size.Height &&
-                obj1.Size.Height + obj1.CanvasPos.Y > obj2.CanvasPos.Y) {
+            if (obj1.canvasPos.x < obj2.canvasPos.x + obj2.size.width &&
+                obj1.canvasPos.x + obj1.size.width > obj2.canvasPos.x &&
+                obj1.canvasPos.y < obj2.canvasPos.y + obj2.size.height &&
+                obj1.size.height + obj1.canvasPos.y > obj2.canvasPos.y) {
 
                 return true;
 
@@ -373,7 +381,7 @@
             var isValid = true;
             var block = findBlock(x, y);
             
-            if (block.HasBomb === true || block.OnFire === true) {
+            if (block.hasBomb === true || block.onFire === true) {
             
                 isValid = false;
 
@@ -382,13 +390,84 @@
             return isValid;
         }
 
+        function checkIfAnyPlayerTouchesFire() {
+            
+            var playersWhoTouchFire = [];
+
+            for (var i = 0; i < players.length; i++) {
+
+                for (var j = 0; j < map.length; j++) {
+                
+                    if (map[j].onFire) {
+                    
+                        if (checkCollision(players[i], map[j])) {
+
+                            playersWhoTouchFire.push(players[i]);
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+            return playersWhoTouchFire;
+
+        }
+
+        function damagePlayer(player) {
+
+            if (player != null) {
+
+                if (!player.isImmune) {
+
+                    player.health = player.health - 1;
+
+                    if (player.health === 0) {
+
+                        player.die();
+
+                    } else {
+
+                        player.isImmune = true;
+                        var oldColor = player.color;
+                        player.color = "purple";
+
+                        setTimeout(function () {
+                            player.isImmune = false;
+                            player.color = oldColor;
+                        }, immuneAfterDamageTime);
+                        
+                        console.log(player.health);
+
+                    }
+
+                } 
+
+            }
+
+        }
+
         newGame();
 
         timer.tick = function () {
 
-            for (var i = 0; i < Players.length; i++) {
-                movePlayer(Players[i]);
+            var playersWhoTouchFire = checkIfAnyPlayerTouchesFire();
+            if (playersWhoTouchFire.length > 0) {
+
+                for (var j = 0; j < playersWhoTouchFire.length; j++) {
+
+                    damagePlayer(playersWhoTouchFire[j]);
+
+                }
+
             }
+
+            for (var i = 0; i < players.length; i++) {
+                movePlayer(players[i]);
+            }
+            
 
             ctx.clearRect(0, 0, c.width, c.height);
             drawMap();
@@ -410,35 +489,31 @@
 /*Player 1*/
 
 /*W*/               case 87: {
-                        Players[0].YKeys.up = true;
-                        Players[0].currentDirection = Direction.UP;
+                        players[0].yKeys.up = true;
                     } break;
 
 /*D*/               case 68: {
-                        Players[0].XKeys.right = true;
-                        Players[0].currentDirection = Direction.RIGHT;
+                        players[0].xKeys.right = true;
                     } break;
 
 /*S*/               case 83: {
-                        Players[0].YKeys.down = true;
-                        Players[0].currentDirection = Direction.DOWN;
+                        players[0].yKeys.down = true;
                     } break;
 
 /*A*/               case 65: {
-                        Players[0].XKeys.left = true;
-                        Players[0].currentDirection = Direction.LEFT;
+                        players[0].xKeys.left = true;
                     } break;
 /*SPACE*/           case 32: {
                         if (!timer.stopped) {
 
-                            if (Players[0].amountOfBombs > 0) {
+                            if (players[0].amountOfBombs > 0) {
 
-                                var block = findBlock(Players[0].MapPos.X, Players[0].MapPos.Y);
+                                var block = findBlock(players[0].mapPos.x, players[0].mapPos.y);
 
-                                if (isValidPlaceToLayBomb(block.MapPos.X, block.MapPos.Y)) {
+                                if (isValidPlaceToLayBomb(block.mapPos.x, block.mapPos.y)) {
 
-                                    Players[0].amountOfBombs = Players[0].amountOfBombs - 1;
-                                    Players[0].dropBomb(block.MapPos.X, block.MapPos.Y, Players[0].equippedBomb, Players[0]);
+                                    players[0].amountOfBombs = players[0].amountOfBombs - 1;
+                                    players[0].dropBomb(block.mapPos.x, block.mapPos.y, players[0].equippedBomb, players[0]);
 
                                 }
 
@@ -450,35 +525,31 @@
 /*Player 2*/
 
 /*UP*/              case 38: {
-                        Players[1].YKeys.up = true;
-                        Players[1].currentDirection = Direction.UP;
+                        players[1].yKeys.up = true;
                     } break;
 
 /*RIGHT*/           case 39: {
-                        Players[1].XKeys.right = true;
-                        Players[1].currentDirection = Direction.RIGHT;
+                        players[1].xKeys.right = true;
                     } break;
 
 /*DOWN*/            case 40: {
-                        Players[1].YKeys.down = true;
-                        Players[1].currentDirection = Direction.DOWN;
+                        players[1].yKeys.down = true;
                     } break;
 
 /*LEFT*/            case 37: {
-                        Players[1].XKeys.left = true;
-                        Players[1].currentDirection = Direction.LEFT;
+                        players[1].xKeys.left = true;
                     } break;
 /*FORWARD SLASH*/   case 191: {
                         if (!timer.stopped) {
 
-                            if (Players[1].amountOfBombs > 0) {
+                            if (players[1].amountOfBombs > 0) {
 
-                                var block = findBlock(Players[1].MapPos.X, Players[1].MapPos.Y);
+                                var block = findBlock(players[1].mapPos.x, players[1].mapPos.y);
 
-                                if (isValidPlaceToLayBomb(block.MapPos.X, block.MapPos.Y)) {
+                                if (isValidPlaceToLayBomb(block.mapPos.x, block.mapPos.y)) {
 
-                                    Players[1].amountOfBombs = Players[1].amountOfBombs - 1;
-                                    Players[1].dropBomb(block.MapPos.X, block.MapPos.Y, Players[1].equippedBomb, Players[1]);
+                                    players[1].amountOfBombs = players[1].amountOfBombs - 1;
+                                    players[1].dropBomb(block.mapPos.x, block.mapPos.y, players[1].equippedBomb, players[1]);
 
                                 }
 
@@ -498,134 +569,192 @@
 /*Player 1*/
 
 /*W*/           case 87: {
-                    Players[0].YKeys.up = false;
+                    players[0].yKeys.up = false;
                 } break;
 
 /*D*/           case 68: {
-                    Players[0].XKeys.right = false;
+                    players[0].xKeys.right = false;
                 } break;
 
 /*S*/           case 83: {
-                    Players[0].YKeys.down = false;
+                    players[0].yKeys.down = false;
                 } break;
 
 /*A*/           case 65: {
-                    Players[0].XKeys.left = false;
+                    players[0].xKeys.left = false;
                 } break;
 
 /*Player 2*/
 
 /*UP*/          case 38: {
-                    Players[1].YKeys.up = false;
+                    players[1].yKeys.up = false;
                 } break;
 
 /*RIGHT*/       case 39: {
-                    Players[1].XKeys.right = false;
+                    players[1].xKeys.right = false;
                 } break;
 
 /*DOWN*/        case 40: {
-                    Players[1].YKeys.down = false;
+                    players[1].yKeys.down = false;
                 } break;
 
 /*LEFT*/        case 37: {
-                    Players[1].XKeys.left = false;
+                    players[1].xKeys.left = false;
                 } break;
 
             }
 
         });
 
+        function Block(mapPosX, mapPosY, blockType) {
+
+            this.mapPos = {
+                x: mapPosX,
+                y: mapPosY
+            },
+            this.canvasPos = {
+                x: Math.floor(mapPosX * blockSize),
+                y: Math.floor(mapPosY * blockSize)
+            },
+            this.size = {
+                width: blockSize,
+                height: blockSize
+            },
+            this.blockType = {
+                blockType: blockType
+            },
+            this.walkThrough = false
+            
+
+            if (blockType === 0) {
+
+                this.walkThrough = true;
+                this.hasBomb = false;
+                this.bomb = null;
+                this.onFire = false;
+                this.letFireDieTimer = new Timer(),
+                this.catchOnFire = function (x, y, player) {
+
+                    var thisBlock = findBlock(x, y);
+
+                    if (thisBlock.onFire) {
+
+                        clearTimeout(thisBlock.letFireDieTimer.timeout);
+                        thisBlock.letFireDieTimer.start();
+
+                    } else {
+
+                        thisBlock.letFireDieTimer.interval = onFireTime;
+                        thisBlock.letFireDieTimer.tick = function () {
+                            thisBlock.onFire = false;
+                        }
+                        thisBlock.onFire = true;
+                        thisBlock.letFireDieTimer.start();
+
+                    }
+
+                }
+
+            }
+
+        }
+
         function Player(x, y, id, color) {
 
-            this.MapPos = {
-                X: x,
-                Y: y
+            this.mapPos = {
+                x: x,
+                y: y
             },
-            this.CanvasPos = {
-                X: Math.floor(x * blockSize),
-                Y: Math.floor(y * blockSize)
+            this.canvasPos = {
+                x: Math.floor(x * blockSize),
+                y: Math.floor(y * blockSize)
             },
-            this.Size = {
-                Width: playerSize,
-                Height: playerSize
+            this.size = {
+                width: playerSize,
+                height: playerSize
             },
-            this.XKeys = {
+            this.xKeys = {
                 right: false,
                 left: false
             },
-            this.YKeys = {
+            this.yKeys = {
                 up: false,
                 down: false
             },
-            this.playerID = id,
-            this.playerColor = color,
-            this.playerSpeed = initialPlayerSpeed,
-            this.health = initialHealth;
-            this.currentDirection = Direction.RIGHT,
+            this.id = id,
+            this.color = color,
+            this.speed = initialPlayerSpeed,
+            this.isDead = false;
+            this.isImmune = false;
+            this.health = initialPlayerHealth;
             this.amountOfBombs = initialAmountOfBombs,
             this.explosionRange = initialBombRange,
-            this.equippedBomb = bombType.type_basic;
+            this.equippedBomb = bombType.type_basic,
             this.dropBomb = function (x, y, bombType, player) {
 
                 var block = findBlock(x, y);
-                block.HasBomb = true;
-                block.Bomb = new Bomb(block.MapPos.X, block.MapPos.Y, bombType, player);
+                block.hasBomb = true;
+                block.bomb = new Bomb(block.mapPos.x, block.mapPos.y, bombType, player);
 
                 setTimeout(function () {
-                    if (block.Bomb != null) {
-                        block.Bomb.Explode(x, y, bombType, player);
+                    if (block.bomb != null) {
+                        block.bomb.explode(x, y, bombType, player);
                     }
                 }, explosionTime);
                 
+            },
+            this.die = function () {
+                console.log("Player " + this.id + " is dead!");
+                this.isDead = true;
             }
 
         }
 
         function Bomb(mapPosX, mapPosY, bombType, player) {
 
-            this.Player = player,
-            this.Type = bombType,
-            this.MapPos = {
-                X: mapPosX,
-                Y: mapPosY
+            this.player = player,
+            this.type = bombType,
+            this.mapPos = {
+                x: mapPosX,
+                y: mapPosY
             },
-            this.CanvasPos = {
-                X: Math.floor(mapPosX * blockSize),
-                Y: Math.floor(mapPosY * blockSize)
+            this.canvasPos = {
+                x: Math.floor(mapPosX * blockSize),
+                y: Math.floor(mapPosY * blockSize)
             },
-            this.Size = {
-                Width: blockSize,
-                Height: blockSize
+            this.size = {
+                width: blockSize,
+                height: blockSize
             },
-            this.Damage = 1,
+            this.damage = 1,
             //this.Radius = initialBombRadius,
-            this.Explode = function (x, y, bombType, player) {
+            this.explode = function (x, y, bombType, player) {
 
                 var block = findBlock(x, y);
-                block.HasBomb = false;
-                block.Bomb = null;
+                block.hasBomb = false;
+                block.bomb = null;
                 player.amountOfBombs = player.amountOfBombs + 1;
                 var explosionRadius = returnSurroundings(x, y, player.explosionRange);
                 var blocksThatCatchFire = [];
-                blocksThatCatchFire.push(explosionRadius.Center);
+                blocksThatCatchFire.push(explosionRadius.center);
                 
-                for (var i = 0; i < explosionRadius.Directions.length; i++) {
+                for (var i = 0; i < explosionRadius.directions.length; i++) {
 
-                    for (var j = 0; j < explosionRadius.Directions[i].length; j++) {
+                    for (var j = 0; j < explosionRadius.directions[i].length; j++) {
 
-                        if (explosionRadius.Directions[i][j] != null) {
+                        if (explosionRadius.directions[i][j] != null) {
 
-                            if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_empty) {
+                            if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_empty) {
                             
-                                blocksThatCatchFire.push(explosionRadius.Directions[i][j]);
+                                blocksThatCatchFire.push(explosionRadius.directions[i][j]);
 
-                            } else if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_wall) {
+                            } else if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_wall) {
                             
                                 break;
 
-                            } else if (explosionRadius.Directions[i][j].BlockType.blockType === blockType.type_crate) {
+                            } else if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_crate) {
                             
-                                blocksThatCatchFire.push(explosionRadius.Directions[i][j]);
+                                blocksThatCatchFire.push(explosionRadius.directions[i][j]);
                                 break;
 
                             }
@@ -638,17 +767,22 @@
                 
                 for (var i = 0; i < blocksThatCatchFire.length; i++) {
                     
-                    switch (blocksThatCatchFire[i].BlockType.blockType) {
+                    switch (blocksThatCatchFire[i].blockType.blockType) {
                         
                         case blockType.type_empty: {
-                            if (blocksThatCatchFire[i].HasBomb) {
-                                blocksThatCatchFire[i].Bomb.Explode(blocksThatCatchFire[i].MapPos.X, blocksThatCatchFire[i].MapPos.Y, blocksThatCatchFire[i].Bomb.Type, player);
+
+                            if (blocksThatCatchFire[i].hasBomb) {
+                                blocksThatCatchFire[i].bomb.explode(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, blocksThatCatchFire[i].bomb.type, player);
                             }
-                            blocksThatCatchFire[i].CatchOnFire(blocksThatCatchFire[i].MapPos.X, blocksThatCatchFire[i].MapPos.Y, player);
+
+                            blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
+
                         } break;
                         case blockType.type_crate: {
-                            blocksThatCatchFire[i].BlockType.blockType = blockType.type_empty
-                            blocksThatCatchFire[i].CatchOnFire(blocksThatCatchFire[i].MapPos.X, blocksThatCatchFire[i].MapPos.Y, player);
+
+                            blocksThatCatchFire[i].blockType.blockType = blockType.type_empty;
+                            blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
+
                         } break;
 
                     }
