@@ -13,6 +13,7 @@
 <body style="background-color: black;">
 
     <canvas id="cvs" width="680" height="520"></canvas>
+    <p id="demo" style="color: white;">test</p>
 
     <script>
 
@@ -28,7 +29,7 @@
         var immuneAfterDamageTime = 3000;
         var initialBombRange = 2;
         var initialAmountOfBombs = 20;
-        var initialPlayerSpeed = 2;
+        var initialPlayerSpeed = 10;
         var initialPlayerHealth = 3;
         var blockType = {
             type_empty: 0,
@@ -81,68 +82,15 @@
                     x = 0;
                     y++;
                 }
+
                 if (x === 0 || y === 0 || x === mapWidth - 1 || y === mapHeight - 1 || x % 2 === 0 && y % 2 === 0) {
-                    map.push({
-                        mapPos: {
-                            x: x,
-                            y: y
-                        },
-                        canvasPos: {
-                            x: Math.floor(x * blockSize),
-                            y: Math.floor(y * blockSize)
-                        },
-                        size: {
-                            width: blockSize,
-                            height: blockSize
-                        },
-                        blockType: {
-                            blockType: blockType.type_wall
-                        },
-                        walkThrough: false
-                    });
+                    map.push(new Block(x, y, 1));
                 }
+
                 else {
-                    map.push({
-                        mapPos: {
-                            x: x,
-                            y: y
-                        },
-                        canvasPos: {
-                            x: Math.floor(x * blockSize),
-                            y: Math.floor(y * blockSize)
-                        },
-                        size: {
-                            width: blockSize,
-                            height: blockSize
-                        },
-                        blockType: {
-                            blockType: blockType.type_empty
-                        },
-                        walkThrough: true,
-                        hasBomb: false,
-                        bomb: null,
-                        onFire: false,
-                        letFireDieTimer: new Timer(),
-                        catchOnFire: function (x, y, player) {
-
-                            var thisBlock = findBlock(x, y);
-
-                            if (thisBlock.onFire) {
-                                clearTimeout(thisBlock.letFireDieTimer.timeout);
-                                thisBlock.letFireDieTimer.start();
-                            } else {
-                                thisBlock.letFireDieTimer.interval = onFireTime;
-                                thisBlock.letFireDieTimer.tick = function () {
-                                    thisBlock.onFire = false;
-                                }
-                                thisBlock.onFire = true;
-                                thisBlock.letFireDieTimer.start();
-                            }
-
-                        }
-                        
-                    });
+                    map.push(new Block(x, y, 0));
                 }
+
                 x++;
             }
 
@@ -242,6 +190,17 @@
 
         }
 
+        function updatePlayerSurroundings(player) {
+
+            var surroundings = returnSurroundings(player.mapPos.x, player.mapPos.y, 1);
+
+            player.surroundings.up = surroundings.directions[0][0];
+            player.surroundings.right = surroundings.directions[1][0];
+            player.surroundings.down = surroundings.directions[2][0];
+            player.surroundings.left = surroundings.directions[3][0];
+
+        }
+
         function generateCrates() {
 
             for (var i = 0; i < map.length; i++) {
@@ -264,7 +223,7 @@
 
                         if (Math.random() < cratesPercentage) {
 
-                            map[i].blockType.blockType = blockType.type_crate;
+                            map[i] = new Block(map[i].mapPos.x, map[i].mapPos.y, 2);
 
                         }
 
@@ -276,25 +235,56 @@
 
         }
 
+        function checkCollision(obj1, obj2) {
+
+            if (obj1.canvasPos.x < obj2.canvasPos.x + obj2.size.width &&
+                obj1.canvasPos.x + obj1.size.width > obj2.canvasPos.x &&
+                obj1.canvasPos.y < obj2.canvasPos.y + obj2.size.height &&
+                obj1.size.height + obj1.canvasPos.y > obj2.canvasPos.y) {
+
+                return true;
+
+            }
+            else {
+                return false;
+            }
+
+        }
+
         function drawMap() {
 
             for (var i = 0; i < map.length; i++) {
+
                 if (map[i].blockType.blockType === blockType.type_wall) {
+
                     ctx.fillStyle = "black";
+
                 }
                 else if (map[i].blockType.blockType === blockType.type_empty) {
+
                     if (map[i].onFire === true) {
+
                         ctx.fillStyle = "orange";
+
                     } else if (map[i].hasBomb) {
+
                         ctx.fillStyle = "red";
+
                     } else {
+
                         ctx.fillStyle = "green";
+
                     }
+
                 }
                 else if (map[i].blockType.blockType === blockType.type_crate) {
+
                     ctx.fillStyle = "brown";
+
                 }
+
                 ctx.fillRect(map[i].mapPos.x * blockSize, map[i].mapPos.y * blockSize, blockSize, blockSize);
+
             }
 
         }
@@ -302,9 +292,11 @@
         function drawPlayers() {
             
             for (var i = 0; i < players.length; i++) {
+
                 ctx.fillStyle = players[i].color;
                 ctx.fillRect(players[i].canvasPos.x, players[i].canvasPos.y, players[i].size.width, players[i].size.height);
                 ctx.fillStyle = 'black';
+
             }
 
         }
@@ -353,25 +345,9 @@
                     player.mapPos.x = Math.floor(player.canvasPos.x / blockSize);
                     player.mapPos.y = Math.floor(player.canvasPos.y / blockSize);
                     continue;
-                    
+
                 }
 
-            }
-
-        }
-
-        function checkCollision(obj1, obj2) {
-
-            if (obj1.canvasPos.x < obj2.canvasPos.x + obj2.size.width &&
-                obj1.canvasPos.x + obj1.size.width > obj2.canvasPos.x &&
-                obj1.canvasPos.y < obj2.canvasPos.y + obj2.size.height &&
-                obj1.size.height + obj1.canvasPos.y > obj2.canvasPos.y) {
-
-                return true;
-
-            }
-            else {
-                return false;
             }
 
         }
@@ -454,6 +430,7 @@
         timer.tick = function () {
 
             var playersWhoTouchFire = checkIfAnyPlayerTouchesFire();
+
             if (playersWhoTouchFire.length > 0) {
 
                 for (var j = 0; j < playersWhoTouchFire.length; j++) {
@@ -465,13 +442,17 @@
             }
 
             for (var i = 0; i < players.length; i++) {
+
                 movePlayer(players[i]);
+                updatePlayerSurroundings(players[i]);
+                
             }
             
 
             ctx.clearRect(0, 0, c.width, c.height);
             drawMap();
             drawPlayers();
+
         };
 
         $(document).keydown(function (e) {
@@ -606,6 +587,53 @@
 
         });
 
+        function catchOnFire (x, y, player) {
+
+            var thisBlock = findBlock(x, y);
+
+            if (thisBlock != null) {
+            
+                if (thisBlock.onFire) {
+
+                    clearTimeout(thisBlock.letFireDieTimer.timeout);
+                    thisBlock.letFireDieTimer.start();
+
+                } else {
+
+                    if (!thisBlock.letFireDieTimer) {
+                        thisBlock.letFireDieTimer = new Timer();
+                    }
+                    thisBlock.letFireDieTimer.interval = onFireTime;
+                    thisBlock.letFireDieTimer.tick = function () {
+                        thisBlock.onFire = false;
+                    }
+                    thisBlock.onFire = true;
+                    thisBlock.letFireDieTimer.start();
+
+                }
+
+            }
+
+        }
+
+        function destroyCrate(crateBlock) {
+
+            if (crateBlock != null && crateBlock.blockType.blockType === 2) {
+                
+                crateBlock.blockType.blockType = 0;
+                crateBlock.walkThrough = true;
+                crateBlock.hasBomb = false;
+                crateBlock.bomb = null;
+                crateBlock.onFire = false;
+                crateBlock.letFireDieTimer = new Timer();
+                crateBlock.catchOnFire = catchOnFire;
+
+            } else {
+                console.log("Block (" + crateBlock.mapPos.x + ", " + crateBlock.mapPos.y + ") is not of type crate");
+            }
+
+        }
+
         function Block(mapPosX, mapPosY, blockType) {
 
             this.mapPos = {
@@ -623,39 +651,12 @@
             this.blockType = {
                 blockType: blockType
             },
-            this.walkThrough = false
-            
-
-            if (blockType === 0) {
-
-                this.walkThrough = true;
-                this.hasBomb = false;
-                this.bomb = null;
-                this.onFire = false;
-                this.letFireDieTimer = new Timer(),
-                this.catchOnFire = function (x, y, player) {
-
-                    var thisBlock = findBlock(x, y);
-
-                    if (thisBlock.onFire) {
-
-                        clearTimeout(thisBlock.letFireDieTimer.timeout);
-                        thisBlock.letFireDieTimer.start();
-
-                    } else {
-
-                        thisBlock.letFireDieTimer.interval = onFireTime;
-                        thisBlock.letFireDieTimer.tick = function () {
-                            thisBlock.onFire = false;
-                        }
-                        thisBlock.onFire = true;
-                        thisBlock.letFireDieTimer.start();
-
-                    }
-
-                }
-
-            }
+            this.walkThrough = (blockType === 0 ? true : false),
+            this.hasBomb = (blockType === 0 ? false : undefined),
+            this.bomb = (blockType === 0 ? null : undefined),
+            this.onFire = (blockType === 0 ? false : undefined),
+            this.letFireDieTimer = (blockType === 0 ? new Timer() : undefined),
+            this.catchOnFire = (blockType === 0 ? catchOnFire : undefined);
 
         }
 
@@ -680,6 +681,16 @@
             this.yKeys = {
                 up: false,
                 down: false
+            },
+            this.surroundings = {
+                upLeft: null,
+                up: null,
+                upRight: null,
+                left: null,
+                right: null,
+                downLeft: null,
+                down: null,
+                downRight: null
             },
             this.id = id,
             this.color = color,
@@ -779,8 +790,8 @@
 
                         } break;
                         case blockType.type_crate: {
-
-                            blocksThatCatchFire[i].blockType.blockType = blockType.type_empty;
+                            
+                            destroyCrate(blocksThatCatchFire[i]);
                             blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
 
                         } break;
