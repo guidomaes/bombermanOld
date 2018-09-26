@@ -19,18 +19,20 @@
 
         var c = document.getElementById('cvs');
         var ctx = c.getContext('2d');
+        ctx.font = "25px Arial";
+        var gameInfo = "Press enter to start the game";
         var timer = new Timer();
-        timer.interval = 20;
+        timer.interval = 10;
         timer.isLoop = true;
         var blockSize = 40;
         var playerSize = 20;
         var explosionTime = 2500;
         var onFireTime = 1500;
         var immuneAfterDamageTime = 3000;
-        var initialBombRange = 2;
-        var initialAmountOfBombs = 20;
-        var initialPlayerSpeed = 10;
-        var initialPlayerHealth = 3;
+        var initialExplosionRange = 2;
+        var initialAmountOfBombs = 1;
+        var initialPlayerSpeed = 1;
+        var initialPlayerHealth = 10;
         var blockType = {
             type_empty: 0,
             type_wall: 1,
@@ -38,6 +40,11 @@
         };
         var bombType = {
             type_basic: 0
+        };
+        var itemType = {
+            type_incrementAmountOfBombs: 0,
+            type_increaseExplosionRange: 1,
+            type_increasePlayerSpeed: 2
         };
         var mapWidth = document.getElementById('cvs').width / blockSize;
         var mapHeight = document.getElementById('cvs').height / blockSize;
@@ -68,11 +75,13 @@
         ];
         var reservedBlocks = [];
         var reservedBlocksInEachDirectionFromSpawnPoints = 2;
+        var chanceOfItemDroppingPercentage = 1;
         var cratesPercentage = 0.7;
         var players = [
             new Player(spawnPoints[0].x, spawnPoints[0].y, 1, 'blue'),
             new Player(spawnPoints[1].x, spawnPoints[1].y, 2, 'yellow')
         ];
+        var amountOfAlivePlayers = players.length;
 
         function makeMap() {
 
@@ -270,6 +279,10 @@
 
                         ctx.fillStyle = "red";
 
+                    } else if (map[i].item) {
+                        
+                        ctx.fillStyle = map[i].item.color;
+
                     } else {
 
                         ctx.fillStyle = "green";
@@ -293,12 +306,20 @@
             
             for (var i = 0; i < players.length; i++) {
 
-                ctx.fillStyle = players[i].color;
-                ctx.fillRect(players[i].canvasPos.x, players[i].canvasPos.y, players[i].size.width, players[i].size.height);
-                ctx.fillStyle = 'black';
+                if (!players[i].isDead) {
+                    ctx.fillStyle = players[i].color;
+                    ctx.fillRect(players[i].canvasPos.x, players[i].canvasPos.y, players[i].size.width, players[i].size.height);
+                    ctx.fillStyle = 'black';
+                }
 
             }
 
+        }
+
+        function drawGameInfo() {
+            ctx.fillStyle = "white";
+            ctx.fillText(gameInfo, c.width / 2 - ctx.measureText(gameInfo).width / 2, c.height / 2);
+            ctx.fillStyle = 'black';
         }
 
         function newGame() {
@@ -308,26 +329,34 @@
             generateCrates();
             drawMap();
             drawPlayers();
+            drawGameInfo();
 
         }
 
         function movePlayer(player) {
 
-            posX = player.canvasPos.x;
-            posY = player.canvasPos.y;
+            var posX = player.canvasPos.x;
+            var posY = player.canvasPos.y;
+
+            var diffX = 0;
+            var diffY = 0;
 
             if (player.xKeys.right === true && player.xKeys.left === false) {
                 player.canvasPos.x = player.canvasPos.x + player.speed;
+                diffX = diffX + player.speed;
             }
             else if (player.xKeys.right === false && player.xKeys.left === true) {
                 player.canvasPos.x = player.canvasPos.x - player.speed;
+                diffX = diffX - player.speed;
             }
 
             if (player.yKeys.up === true && player.yKeys.down === false) {
                 player.canvasPos.y = player.canvasPos.y - player.speed;
+                diffY = diffY - player.speed;
             }
             else if (player.yKeys.up === false && player.yKeys.down === true) {
                 player.canvasPos.y = player.canvasPos.y + player.speed;
+                diffY = diffY + player.speed;
             }
 
             for (var i = 0; i < map.length; i++) {
@@ -336,8 +365,38 @@
                     map[i].blockType.blockType === blockType.type_crate) {
 
                     if (checkCollision(player, map[i])) {
-                        player.canvasPos.x = posX;
-                        player.canvasPos.y = posY;
+                        
+                        for (var j = 0; j < player.speed; j++) {
+                            
+                            if (diffX !== 0) {
+
+                                if(diffX > 0){
+                                    player.canvasPos.x--;
+                                    diffX--;
+                                } else {
+                                    player.canvasPos.x++;
+                                    diffX++;
+                                }
+
+                            }
+                            if (diffY !== 0) {
+                                
+                                if(diffY > 0){
+                                    player.canvasPos.y--;
+                                    diffY--;
+                                } else {
+                                    player.canvasPos.y++;
+                                    diffY++;
+                                }
+
+                            }
+
+                            if (!checkCollision(player, map[i])) {
+                                break;
+                            }
+
+                        }
+
                     }
 
                 } else if (map[i].blockType.blockType === blockType.type_empty) {
@@ -366,19 +425,79 @@
             return isValid;
         }
 
+        function pickUpItem(player, item) {
+
+            if (!player.isDead && item != null) {
+            
+                //console.log(item);
+                switch (item.type) {
+
+                    case 0: {
+                        player.amountOfBombs++;
+                        console.log("More bombs!");
+                    } break;
+
+                    case 1: {
+                        player.explosionRange++;
+                        console.log("Bigger explosions!");
+                    } break;
+
+                    case 2: {
+                        player.speed++;
+                        console.log("Gotta go fast!");
+                    } break;
+
+                }
+
+                findBlock(item.mapPos.x, item.mapPos.y).item = null;
+
+            }
+
+        }
+
+        function checkIfAnyPlayerTouchesItem() {
+
+            for (var i = 0; i < players.length; i++) {
+
+                if (!players[i].isDead) {
+
+                    for (var j = 0; j < map.length; j++) {
+
+                        if (map[j].item) {
+
+                            if (checkCollision(players[i], map[j])) {
+
+                                pickUpItem(players[i], map[j].item);
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+            }
+
+        }
+
         function checkIfAnyPlayerTouchesFire() {
             
             var playersWhoTouchFire = [];
 
             for (var i = 0; i < players.length; i++) {
 
-                for (var j = 0; j < map.length; j++) {
+                if (!players[i].isDead) {
                 
-                    if (map[j].onFire) {
-                    
-                        if (checkCollision(players[i], map[j])) {
+                    for (var j = 0; j < map.length; j++) {
 
-                            playersWhoTouchFire.push(players[i]);
+                        if (map[j].onFire) {
+
+                            if (checkCollision(players[i], map[j])) {
+
+                                playersWhoTouchFire.push(players[i]);
+
+                            }
 
                         }
 
@@ -400,7 +519,7 @@
 
                     player.health = player.health - 1;
 
-                    if (player.health === 0) {
+                    if (player.health < 1) {
 
                         player.die();
 
@@ -415,8 +534,6 @@
                             player.color = oldColor;
                         }, immuneAfterDamageTime);
                         
-                        console.log(player.health);
-
                     }
 
                 } 
@@ -439,19 +556,36 @@
 
                 }
 
+                if (amountOfAlivePlayers === 1) {
+                
+                    for (var i = 0; i < players.length; i++) {
+                    
+                        if (!players[i].isDead) {
+                            
+                            gameInfo = "Player " + players[i].id + " won!";
+                        }
+
+                    }
+
+                }
+
             }
+
+            checkIfAnyPlayerTouchesItem();
 
             for (var i = 0; i < players.length; i++) {
 
-                movePlayer(players[i]);
-                updatePlayerSurroundings(players[i]);
+                if (!players[i].isDead) {
+                    movePlayer(players[i]);
+                    updatePlayerSurroundings(players[i]);
+                }
                 
             }
-            
 
             ctx.clearRect(0, 0, c.width, c.height);
             drawMap();
             drawPlayers();
+            drawGameInfo();
 
         };
 
@@ -462,7 +596,10 @@
 /*ENTER*/           case 13: {
                         if (timer.stopped) {
                             timer.start();
+                            gameInfo = "";
                         } else {
+                            gameInfo = "Press enter to start the game";
+                            drawGameInfo();
                             timer.stop();
                         }
                     } break;
@@ -485,7 +622,7 @@
                         players[0].xKeys.left = true;
                     } break;
 /*SPACE*/           case 32: {
-                        if (!timer.stopped) {
+                        if (!timer.stopped && !players[0].isDead) {
 
                             if (players[0].amountOfBombs > 0) {
 
@@ -521,7 +658,7 @@
                         players[1].xKeys.left = true;
                     } break;
 /*FORWARD SLASH*/   case 191: {
-                        if (!timer.stopped) {
+                        if (!timer.stopped && !players[1].isDead) {
 
                             if (players[1].amountOfBombs > 0) {
 
@@ -587,7 +724,77 @@
 
         });
 
-        function catchOnFire (x, y, player) {
+        function explode(x, y, bombType, player) {
+
+            var block = findBlock(x, y);
+
+            if (block != null && block.blockType.blockType === 0) {
+
+                block.hasBomb = false;
+                block.bomb = null;
+                player.amountOfBombs = player.amountOfBombs + 1;
+
+                var explosionRadius = returnSurroundings(x, y, player.explosionRange);
+
+                var blocksThatCatchFire = [];
+                blocksThatCatchFire.push(explosionRadius.center);
+
+                for (var i = 0; i < explosionRadius.directions.length; i++) {
+
+                    for (var j = 0; j < explosionRadius.directions[i].length; j++) {
+
+                        if (explosionRadius.directions[i][j] != null) {
+
+                            if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_empty) {
+
+                                blocksThatCatchFire.push(explosionRadius.directions[i][j]);
+
+                            } else if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_wall) {
+
+                                break;
+
+                            } else if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_crate) {
+
+                                blocksThatCatchFire.push(explosionRadius.directions[i][j]);
+                                break;
+
+                            }
+
+                        }
+
+                    }
+
+                }
+
+                for (var i = 0; i < blocksThatCatchFire.length; i++) {
+
+                    switch (blocksThatCatchFire[i].blockType.blockType) {
+
+                        case blockType.type_empty: {
+
+                            if (blocksThatCatchFire[i].hasBomb) {
+                                blocksThatCatchFire[i].bomb.explode(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, blocksThatCatchFire[i].bomb.type, player);
+                            }
+
+                            blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
+
+                        } break;
+                        case blockType.type_crate: {
+
+                            destroyCrate(blocksThatCatchFire[i]);
+                            blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
+
+                        } break;
+
+                    }
+
+                }
+
+            }
+
+        }
+
+        function catchOnFire(x, y, player) {
 
             var thisBlock = findBlock(x, y);
 
@@ -628,6 +835,18 @@
                 crateBlock.letFireDieTimer = new Timer();
                 crateBlock.catchOnFire = catchOnFire;
 
+                if (Math.random() < chanceOfItemDroppingPercentage) {
+                    
+                    var amountOfDifferentItems = 0;
+                    var type = 0;
+                    for (var n in itemType) {
+                        amountOfDifferentItems = amountOfDifferentItems + 1;
+                    }
+                    type = Math.floor(Math.random() * amountOfDifferentItems);
+                    crateBlock.item = new Item(crateBlock.mapPos.x, crateBlock.mapPos.y, type, "white");
+
+                }
+
             } else {
                 console.log("Block (" + crateBlock.mapPos.x + ", " + crateBlock.mapPos.y + ") is not of type crate");
             }
@@ -656,7 +875,8 @@
             this.bomb = (blockType === 0 ? null : undefined),
             this.onFire = (blockType === 0 ? false : undefined),
             this.letFireDieTimer = (blockType === 0 ? new Timer() : undefined),
-            this.catchOnFire = (blockType === 0 ? catchOnFire : undefined);
+            this.catchOnFire = (blockType === 0 ? catchOnFire : undefined),
+            this.item = (blockType === 0 ? null : undefined)
 
         }
 
@@ -667,8 +887,8 @@
                 y: y
             },
             this.canvasPos = {
-                x: Math.floor(x * blockSize),
-                y: Math.floor(y * blockSize)
+                x: Math.floor(x * blockSize) + blockSize / 4,
+                y: Math.floor(y * blockSize) + blockSize / 4
             },
             this.size = {
                 width: playerSize,
@@ -699,7 +919,7 @@
             this.isImmune = false;
             this.health = initialPlayerHealth;
             this.amountOfBombs = initialAmountOfBombs,
-            this.explosionRange = initialBombRange,
+            this.explosionRange = initialExplosionRange,
             this.equippedBomb = bombType.type_basic,
             this.dropBomb = function (x, y, bombType, player) {
 
@@ -715,8 +935,11 @@
                 
             },
             this.die = function () {
-                console.log("Player " + this.id + " is dead!");
                 this.isDead = true;
+                this.mapPos = null;
+                this.canvasPos = null;
+                this.surroundings = null;
+                amountOfAlivePlayers = amountOfAlivePlayers - 1;
             }
 
         }
@@ -739,69 +962,25 @@
             },
             this.damage = 1,
             //this.Radius = initialBombRadius,
-            this.explode = function (x, y, bombType, player) {
+            this.explode = explode
 
-                var block = findBlock(x, y);
-                block.hasBomb = false;
-                block.bomb = null;
-                player.amountOfBombs = player.amountOfBombs + 1;
-                var explosionRadius = returnSurroundings(x, y, player.explosionRange);
-                var blocksThatCatchFire = [];
-                blocksThatCatchFire.push(explosionRadius.center);
-                
-                for (var i = 0; i < explosionRadius.directions.length; i++) {
+        }
 
-                    for (var j = 0; j < explosionRadius.directions[i].length; j++) {
+        function Item(mapPosX, mapPosY, type, color) {
 
-                        if (explosionRadius.directions[i][j] != null) {
-
-                            if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_empty) {
-                            
-                                blocksThatCatchFire.push(explosionRadius.directions[i][j]);
-
-                            } else if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_wall) {
-                            
-                                break;
-
-                            } else if (explosionRadius.directions[i][j].blockType.blockType === blockType.type_crate) {
-                            
-                                blocksThatCatchFire.push(explosionRadius.directions[i][j]);
-                                break;
-
-                            }
-
-                        }
-
-                    }
-
-                }
-                
-                for (var i = 0; i < blocksThatCatchFire.length; i++) {
-                    
-                    switch (blocksThatCatchFire[i].blockType.blockType) {
-                        
-                        case blockType.type_empty: {
-
-                            if (blocksThatCatchFire[i].hasBomb) {
-                                blocksThatCatchFire[i].bomb.explode(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, blocksThatCatchFire[i].bomb.type, player);
-                            }
-
-                            blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
-
-                        } break;
-                        case blockType.type_crate: {
-                            
-                            destroyCrate(blocksThatCatchFire[i]);
-                            blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
-
-                        } break;
-
-                    }
-
-                }
-
-                
-
+            this.type = type,
+            this.color = color,
+            this.mapPos = {
+                x: mapPosX,
+                y: mapPosY
+            },
+            this.canvasPos = {
+                x: Math.floor(mapPosX * blockSize),
+                y: Math.floor(mapPosY * blockSize)
+            },
+            this.size = {
+                width: blockSize,
+                height: blockSize
             }
 
         }
