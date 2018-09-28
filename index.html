@@ -8,12 +8,27 @@
     <title>Bomberman</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        /*#DIV_cvs {
+            text-align: center;
+        }
+        #cvs {
+            position: relative;
+            display: block;
+            width: 680px;
+            height: 520px;
+        }*/
+    </style>
 
 </head>
 <body style="background-color: black;">
 
-    <canvas id="cvs" width="680" height="520"></canvas>
-    <p id="demo" style="color: white;">test</p>
+    <div id="DIV_cvs">
+        <canvas id="cvs" width="680" height="520"></canvas>
+    </div>
+
+    
+    <p id="demo" style="color: white;"></p>
 
     <script>
 
@@ -30,8 +45,9 @@
         var onFireTime = 1500;
         var immuneAfterDamageTime = 3000;
         var initialExplosionRange = 2;
-        var initialAmountOfBombs = 1;
+        var initialAmountOfBasicBombs = 1;
         var initialPlayerSpeed = 1;
+        var maximumPlayerSpeed = 4;
         var initialPlayerHealth = 10;
         var blockType = {
             type_empty: 0,
@@ -39,12 +55,15 @@
             type_crate: 2
         };
         var bombType = {
-            type_basic: 0
+            type_basic: 0,
+            type_mine: 1
         };
         var itemType = {
-            type_incrementAmountOfBombs: 0,
+            type_increaseAmountOfBasicBombs: 0,
             type_increaseExplosionRange: 1,
-            type_increasePlayerSpeed: 2
+            type_increasePlayerSpeed: 2,
+            type_increaseHealth: 3,
+            type_increaseAmountOfMines: 4
         };
         var mapWidth = document.getElementById('cvs').width / blockSize;
         var mapHeight = document.getElementById('cvs').height / blockSize;
@@ -62,7 +81,7 @@
             },
             {
                 x: 15,
-                y: 1
+                y: 11
             },
             {
                 x: 1,
@@ -70,11 +89,12 @@
             },
             {
                 x: 15,
-                y: 11
+                y: 1
             }
         ];
         var reservedBlocks = [];
         var reservedBlocksInEachDirectionFromSpawnPoints = 2;
+        //
         var chanceOfItemDroppingPercentage = 1;
         var cratesPercentage = 0.7;
         var players = [
@@ -335,8 +355,8 @@
 
         function movePlayer(player) {
 
-            var posX = player.canvasPos.x;
-            var posY = player.canvasPos.y;
+            var mapPosX = player.mapPos.x;
+            var mapPosY = player.mapPos.y;
 
             var diffX = 0;
             var diffY = 0;
@@ -361,8 +381,7 @@
 
             for (var i = 0; i < map.length; i++) {
 
-                if (map[i].blockType.blockType === blockType.type_wall ||
-                    map[i].blockType.blockType === blockType.type_crate) {
+                if (!map[i].walkThrough) {
 
                     if (checkCollision(player, map[i])) {
                         
@@ -429,22 +448,26 @@
 
             if (!player.isDead && item != null) {
             
-                //console.log(item);
                 switch (item.type) {
 
                     case 0: {
-                        player.amountOfBombs++;
-                        console.log("More bombs!");
+                        player.amountOfBasicBombs++;
                     } break;
 
                     case 1: {
                         player.explosionRange++;
-                        console.log("Bigger explosions!");
                     } break;
 
                     case 2: {
-                        player.speed++;
-                        console.log("Gotta go fast!");
+                        if (player.speed < maximumPlayerSpeed) {
+                            player.speed++;
+                        }
+                    } break;
+                    case 3: {
+                        player.health++;
+                    } break;
+                    case 4: {
+                        player.amountOfMines++;
                     } break;
 
                 }
@@ -511,6 +534,32 @@
 
         }
 
+        function checkIfSomebodyWon() {
+            
+            if (amountOfAlivePlayers < 2) {
+
+                var winner = null;
+
+                for (var i = 0; i < players.length; i++) {
+
+                    if (!players[i].isDead) {
+
+                        winner = players[i];
+                        gameInfo = "Player " + players[i].id + " won!";
+                        break;
+
+                    }
+
+                }
+
+                if (winner === null) {
+                    gameInfo = "Tie!";
+                }
+
+            }
+
+        }
+
         function damagePlayer(player) {
 
             if (player != null) {
@@ -556,19 +605,6 @@
 
                 }
 
-                if (amountOfAlivePlayers === 1) {
-                
-                    for (var i = 0; i < players.length; i++) {
-                    
-                        if (!players[i].isDead) {
-                            
-                            gameInfo = "Player " + players[i].id + " won!";
-                        }
-
-                    }
-
-                }
-
             }
 
             checkIfAnyPlayerTouchesItem();
@@ -576,11 +612,25 @@
             for (var i = 0; i < players.length; i++) {
 
                 if (!players[i].isDead) {
+
+                    var block = findBlock(players[i].mapPos.x, players[i].mapPos.y);
+                    
                     movePlayer(players[i]);
                     updatePlayerSurroundings(players[i]);
+
+                    if (block.hasBomb) {
+                        
+                        if (!checkCollision(players[i], block)) {
+                            block.walkThrough = false;
+                            //console.log(block);
+                        }
+                    }
+                    
                 }
                 
             }
+
+
 
             ctx.clearRect(0, 0, c.width, c.height);
             drawMap();
@@ -624,14 +674,14 @@
 /*SPACE*/           case 32: {
                         if (!timer.stopped && !players[0].isDead) {
 
-                            if (players[0].amountOfBombs > 0) {
+                            if (players[0].amountOfBasicBombs > 0) {
 
                                 var block = findBlock(players[0].mapPos.x, players[0].mapPos.y);
 
                                 if (isValidPlaceToLayBomb(block.mapPos.x, block.mapPos.y)) {
 
-                                    players[0].amountOfBombs = players[0].amountOfBombs - 1;
-                                    players[0].dropBomb(block.mapPos.x, block.mapPos.y, players[0].equippedBomb, players[0]);
+                                    players[0].amountOfBasicBombs = players[0].amountOfBasicBombs - 1;
+                                    players[0].dropBomb(block, players[0].equippedBomb, players[0]);
 
                                 }
 
@@ -657,17 +707,17 @@
 /*LEFT*/            case 37: {
                         players[1].xKeys.left = true;
                     } break;
-/*FORWARD SLASH*/   case 191: {
+/*BACK SLASH*/      case 220: {
                         if (!timer.stopped && !players[1].isDead) {
 
-                            if (players[1].amountOfBombs > 0) {
+                            if (players[1].amountOfBasicBombs > 0) {
 
                                 var block = findBlock(players[1].mapPos.x, players[1].mapPos.y);
 
                                 if (isValidPlaceToLayBomb(block.mapPos.x, block.mapPos.y)) {
 
-                                    players[1].amountOfBombs = players[1].amountOfBombs - 1;
-                                    players[1].dropBomb(block.mapPos.x, block.mapPos.y, players[1].equippedBomb, players[1]);
+                                    players[1].amountOfBasicBombs = players[1].amountOfBasicBombs - 1;
+                                    players[1].dropBomb(block, players[1].equippedBomb, players[1]);
 
                                 }
 
@@ -724,17 +774,16 @@
 
         });
 
-        function explode(x, y, bombType, player) {
-
-            var block = findBlock(x, y);
+        function explode(block, bombType, player) {
 
             if (block != null && block.blockType.blockType === 0) {
 
                 block.hasBomb = false;
                 block.bomb = null;
-                player.amountOfBombs = player.amountOfBombs + 1;
+                block.walkThrough = true;
+                player.amountOfBasicBombs = player.amountOfBasicBombs + 1;
 
-                var explosionRadius = returnSurroundings(x, y, player.explosionRange);
+                var explosionRadius = returnSurroundings(block.mapPos.x, block.mapPos.y, player.explosionRange);
 
                 var blocksThatCatchFire = [];
                 blocksThatCatchFire.push(explosionRadius.center);
@@ -773,7 +822,7 @@
                         case blockType.type_empty: {
 
                             if (blocksThatCatchFire[i].hasBomb) {
-                                blocksThatCatchFire[i].bomb.explode(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, blocksThatCatchFire[i].bomb.type, player);
+                                blocksThatCatchFire[i].bomb.explode(blocksThatCatchFire[i], blocksThatCatchFire[i].bomb.type, player);
                             }
 
                             blocksThatCatchFire[i].catchOnFire(blocksThatCatchFire[i].mapPos.x, blocksThatCatchFire[i].mapPos.y, player);
@@ -843,7 +892,19 @@
                         amountOfDifferentItems = amountOfDifferentItems + 1;
                     }
                     type = Math.floor(Math.random() * amountOfDifferentItems);
-                    crateBlock.item = new Item(crateBlock.mapPos.x, crateBlock.mapPos.y, type, "white");
+                    var color = "";
+                    if (type === 0) {
+                        color = "LimeGreen";
+                    } else if (type === 1) {
+                        color = "SteelBlue";
+                    } else if (type === 2) {
+                        color = "YellowGreen";
+                    } else if (type === 3) {
+                        color = "pink";
+                    } else if (type === 4) {
+                        color = "lime";
+                    }
+                    crateBlock.item = new Item(crateBlock.mapPos.x, crateBlock.mapPos.y, type, color);
 
                 }
 
@@ -882,6 +943,7 @@
 
         function Player(x, y, id, color) {
 
+            var self = this;
             this.mapPos = {
                 x: x,
                 y: y
@@ -918,28 +980,38 @@
             this.isDead = false;
             this.isImmune = false;
             this.health = initialPlayerHealth;
-            this.amountOfBombs = initialAmountOfBombs,
+            this.amountOfBasicBombs = initialAmountOfBasicBombs,
+            this.amountOfMines = 0;
             this.explosionRange = initialExplosionRange,
             this.equippedBomb = bombType.type_basic,
-            this.dropBomb = function (x, y, bombType, player) {
 
-                var block = findBlock(x, y);
+            this.switchEquippedBomb = function () {
+
+            },
+
+            this.dropBomb = function(block, bombType, player) {
+                
+                block.bomb = new Bomb(block.mapPos.x, block.mapPos.y, bombType, self);
                 block.hasBomb = true;
-                block.bomb = new Bomb(block.mapPos.x, block.mapPos.y, bombType, player);
-
+                
                 setTimeout(function () {
                     if (block.bomb != null) {
-                        block.bomb.explode(x, y, bombType, player);
+                        block.bomb.explode(block, bombType, self);
                     }
                 }, explosionTime);
                 
             },
+
             this.die = function () {
+
                 this.isDead = true;
                 this.mapPos = null;
                 this.canvasPos = null;
                 this.surroundings = null;
                 amountOfAlivePlayers = amountOfAlivePlayers - 1;
+
+                checkIfSomebodyWon();
+
             }
 
         }
@@ -961,7 +1033,6 @@
                 height: blockSize
             },
             this.damage = 1,
-            //this.Radius = initialBombRadius,
             this.explode = explode
 
         }
